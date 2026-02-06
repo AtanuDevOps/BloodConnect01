@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Donor Dashboard · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div class="nav-right">
+      <span class="muted">Signed in as</span>
+      <strong id="userName">...</strong>
+      <button id="logoutBtn" class="logout-btn" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card welcome">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
+        <!-- Avatar Section -->
+        <div id="dashboardAvatar" class="avatar-circle" style="background-color: var(--primary); margin-bottom: 10px;">
+          <span id="dashboardAvatarText">D</span>
+        </div>
+        
+        <h2 style="margin:0;"><span id="userName_welcome">...</span></h2>
+        
+        <div class="role-badge" style="margin-top: 8px;">
+          <i class="fa-solid fa-hand-holding-droplet"></i>
+          <span id="userRole">Donor</span>
+        </div>
+        
+        <p class="muted" style="margin-top:8px;">Your action can save lives today</p>
+        
+        <button id="editProfileBtn" class="action-btn secondary" style="margin-top:12px; padding: 8px 12px; font-size: 14px;">
+          <i class="fa-solid fa-user-pen"></i> Edit Profile
+        </button>
+      </div>
+      
+      <!-- Donor Info Preview -->
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: grid; gap: 8px; font-size: 14px;">
+        <div><i class="fa-solid fa-droplet" style="color:var(--primary); width:20px"></i> <strong>Blood Group:</strong> <span id="displayBloodGroup">...</span></div>
+        <div><i class="fa-solid fa-location-dot" style="color:var(--primary); width:20px"></i> <strong>Location:</strong> <span id="displayLocation">Not set</span></div>
+        <div><i class="fa-solid fa-phone" style="color:var(--primary); width:20px"></i> <strong>Phone:</strong> <span id="displayPhone">Not set</span></div>
+        <div><i class="fa-solid fa-lock" style="color:var(--primary); width:20px"></i> <strong>Profile Status:</strong> <span id="displayLockStatus">Public</span></div>
+      </div>
+    </section>
+
+    <!-- Profile Access Requests Section -->
+    <section class="card" id="accessRequestsSection" style="display:none; margin-bottom: 24px;">
+      <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-user-shield"></i> Profile Access Requests</h3>
+      <div id="requestsList" style="display: grid; gap: 12px;">
+        <!-- Requests will be injected here -->
+      </div>
+    </section>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center;">
+      <div class="card" style="width:90%; max-width:400px; padding:24px;">
+        <h2 style="margin-bottom:16px">Edit Profile</h2>
+        <form id="editProfileForm" style="display:grid; gap:12px;">
+          <div>
+            <label for="editName" style="font-size:12px; color:var(--muted)">Full Name</label>
+            <input id="editName" type="text" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" required>
+          </div>
+          <div>
+            <label for="editPhone" style="font-size:12px; color:var(--muted)">Phone Number</label>
+            <input id="editPhone" type="tel" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" placeholder="+880...">
+          </div>
+          <div>
+            <label for="editBloodGroup" style="font-size:12px; color:var(--muted)">Blood Group</label>
+            <select id="editBloodGroup" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" required>
+              <option value="">Select Blood Group</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>AB+</option><option>AB-</option>
+              <option>O+</option><option>O-</option>
+            </select>
+          </div>
+          <div>
+            <label for="editLocation" style="font-size:12px; color:var(--muted)">Location (City/Area)</label>
+            <input id="editLocation" type="text" placeholder="e.g. Dhaka, Mirpur" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+          </div>
+          <div>
+            <label for="editProfileColor" style="font-size:12px; color:var(--muted)">Avatar Color</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <input type="color" id="editProfileColor" value="#CE1126" style="width:60px; height:40px; padding:0; border:1px solid var(--border); border-radius:8px; cursor:pointer;">
+              <span style="font-size:12px; color:var(--muted)">Pick a color for your profile icon</span>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 0;">
+            <input type="checkbox" id="editProfileLocked" style="width:18px; height:18px;">
+            <label for="editProfileLocked" style="font-size:14px; cursor:pointer;">Lock My Profile (Hide Phone Number)</label>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;">
+            <button type="button" id="cancelEditBtn" class="action-btn secondary" style="padding:10px;">Cancel</button>
+            <button type="submit" class="action-btn" style="padding:10px;">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <section class="stats">
+      <div class="card stat-card">
+        <div class="stat-title"><i class="fa-solid fa-people-group"></i> Total Donors</div>
+        <div class="stat-value" id="totalDonorsCount">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title"><i class="fa-solid fa-notes-medical"></i> Active Blood Requests</div>
+        <div class="stat-value" id="activeRequestsCount">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title"><i class="fa-solid fa-calendar-check"></i> Last Donation Date</div>
+        <div class="stat-value">—</div>
+      </div>
+    </section>
+
+    <!-- Main Actions -->
+    <div class="actions">
+      <a href="find-donors.html" class="action-btn">
+        <i class="fa-solid fa-magnifying-glass"></i> Find Donors
+      </a>
+      <button class="action-btn secondary" onclick="window.location.href='blood-requests.html'">
+        <i class="fa-solid fa-list-ul"></i> View Blood Requests
+      </button>
+      <button class="action-btn">
+        <i class="fa-solid fa-pen-to-square"></i> Update Donation Status
+      </button>
+    </div>
+
+    <!-- My Blood Requests (As Requestor) -->
+    <section class="card" id="myRequestsSection" style="display:none; margin-top:16px;">
+      <h3 style="margin-bottom:12px;">My Blood Requests</h3>
+      <div id="myRequestsList" style="display:grid; gap:10px;"></div>
+      <a href="blood-requests.html" style="display:block; margin-top:12px; font-size:13px; text-align:center; color:var(--primary); text-decoration:none;">View all requests &rarr;</a>
+    </section>
+
+    <!-- Responses Given (As Donor) -->
+    <section class="card" id="myResponsesSection" style="display:none; margin-top:16px;">
+      <h3 style="margin-bottom:12px;">Requests I Responded To</h3>
+      <div id="myResponsesList" style="display:grid; gap:10px;"></div>
+    </section>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./dashboard.js"></script>
+  <script>
+    // Inline script for Donor Dashboard extra sections
+    (function(){
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+      auth.onAuthStateChanged(user => {
+        if(user) {
+          loadMyRequests(user.uid);
+          loadMyResponses(user.uid);
+        }
+      });
+      
+      // 1. My Requests
+      async function loadMyRequests(uid) {
+        try {
+          const snap = await db.collection("bloodRequests").where("createdBy", "==", uid).orderBy("createdAt", "desc").limit(3).get();
+          if(!snap.empty) {
+            document.getElementById("myRequestsSection").style.display = "block";
+            document.getElementById("myRequestsList").innerHTML = snap.docs.map(doc => {
+              const d = doc.data();
+              const rCount = d.responses ? d.responses.length : 0;
+              return `
+                <div style="padding:10px; background:var(--bg); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <div style="font-weight:600; font-size:14px;">${d.patientName} (${d.bloodGroup})</div>
+                    <div style="font-size:12px; color:var(--muted)">${d.hospitalName}</div>
+                  </div>
+                  <div style="font-size:12px; font-weight:600; color:${rCount>0?'var(--primary)':'var(--muted)'}">
+                    ${rCount} Resp.
+                  </div>
+                </div>
+              `;
+            }).join("");
+          }
+        } catch(e) { console.error("Error loading my requests", e); }
+      }
+
+      // 2. Responses Given (Logic: Find requests where responses array contains my uid)
+      // Note: Firestore array-contains doesn't work easily on object arrays. 
+      // Workaround: We fetch all requests (or recent ones) and filter client side, OR we rely on a separate collection "responses".
+      // Given constraints "Use Firestore only", "No backend", "Avoid over-engineering", and structure given:
+      // "responses: [{ donorId: ... }]"
+      // Firestore query cannot search inside array of objects for specific field value easily without index or simple array.
+      // Optimally, we would have stored "responderIds" array in the doc for querying.
+      // For now, I'll skip complex query and just leave it as a placeholder or fetch recent 50 global requests and filter.
+      // Fetching all might be heavy. Let's try to be smart: 
+      // Actually, since I can't change structure easily (already defined in prompt), I will just fetch latest 20 requests and filter.
+      
+      async function loadMyResponses(uid) {
+        try {
+          // Limitation: Only checks recent 50 requests
+          const snap = await db.collection("bloodRequests").orderBy("createdAt", "desc").limit(50).get();
+          const myResponses = [];
+          snap.forEach(doc => {
+            const data = doc.data();
+            if(data.responses && data.responses.some(r => r.donorId === uid)) {
+              myResponses.push(data);
+            }
+          });
+
+          if(myResponses.length > 0) {
+            document.getElementById("myResponsesSection").style.display = "block";
+            document.getElementById("myResponsesList").innerHTML = myResponses.slice(0, 5).map(d => {
+              return `
+                <div style="padding:10px; background:var(--bg); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <div style="font-weight:600; font-size:14px;">Helping: ${d.patientName}</div>
+                    <div style="font-size:12px; color:var(--muted)">${d.hospitalName}</div>
+                  </div>
+                  <div style="font-size:12px; color:green;">
+                    <i class="fa-solid fa-check"></i> Responded
+                  </div>
+                </div>
+              `;
+            }).join("");
+          }
+        } catch(e) { console.error("Error loading my responses", e); }
+      }
+    })();
+  </script>
+</body>
+</html>

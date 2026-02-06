@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>User Dashboard · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+</head>
+<body>
+  <header class="navbar">
+    <div class="brand">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div class="nav-right">
+      <span class="muted">Signed in as</span>
+      <strong id="userName">...</strong>
+      <button id="logoutBtn" class="logout-btn" type="button">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card welcome">
+      <h2>Welcome, <span id="userName_welcome">...</span></h2>
+      <div class="role-badge">
+        <i class="fa-solid fa-user"></i>
+        <span id="userRole">User</span>
+      </div>
+      <p class="muted">Your action can save lives today</p>
+    </section>
+
+    <section class="stats">
+      <div class="card stat-card">
+        <div class="stat-title"><i class="fa-solid fa-people-group"></i> Total Donors</div>
+        <div class="stat-value" id="totalDonorsCount">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title"><i class="fa-solid fa-notes-medical"></i> Active Blood Requests</div>
+        <div class="stat-value" id="activeRequestsCount">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-title"><i class="fa-solid fa-clipboard-list"></i> Requests Made</div>
+        <div class="stat-value">—</div>
+      </div>
+    </section>
+
+    <section class="actions">
+      <a href="find-donors.html" class="action-btn"><i class="fa-solid fa-magnifying-glass"></i> Find Donors</a>
+      <a href="blood-requests.html" class="action-btn secondary"><i class="fa-solid fa-list"></i> View Blood Requests</a>
+      <a href="#" class="action-btn secondary"><i class="fa-solid fa-circle-info"></i> About</a>
+    </section>
+
+    <!-- My Requests Section -->
+    <section class="card" id="myRequestsSection" style="display:none; margin-top:16px;">
+      <h3 style="margin-bottom:12px;">My Blood Requests</h3>
+      <div id="myRequestsList" style="display:grid; gap:10px;"></div>
+      <a href="blood-requests.html" style="display:block; margin-top:12px; font-size:13px; text-align:center; color:var(--primary); text-decoration:none;">View all requests &rarr;</a>
+    </section>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./dashboard.js"></script>
+  <script>
+    // Inline script for My Requests preview
+    (function(){
+      const db = firebase.firestore();
+      const auth = firebase.auth();
+      auth.onAuthStateChanged(user => {
+        if(user) loadMyRequests(user.uid);
+      });
+      async function loadMyRequests(uid) {
+        try {
+          const snap = await db.collection("bloodRequests").where("createdBy", "==", uid).orderBy("createdAt", "desc").limit(3).get();
+          if(!snap.empty) {
+            document.getElementById("myRequestsSection").style.display = "block";
+            document.getElementById("myRequestsList").innerHTML = snap.docs.map(doc => {
+              const d = doc.data();
+              const rCount = d.responses ? d.responses.length : 0;
+              return `
+                <div style="padding:10px; background:var(--bg); border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <div style="font-weight:600; font-size:14px;">${d.patientName} (${d.bloodGroup})</div>
+                    <div style="font-size:12px; color:var(--muted)">${d.hospitalName}</div>
+                  </div>
+                  <div style="font-size:12px; font-weight:600; color:${rCount>0?'var(--primary)':'var(--muted)'}">
+                    ${rCount} Resp.
+                  </div>
+                </div>
+              `;
+            }).join("");
+          }
+        } catch(e) { console.error("Error loading my requests", e); }
+      }
+    })();
+  </script>
+</body>
+</html>

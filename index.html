@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BloodConnect · Auth</title>
+  <link rel="stylesheet" href="./signup.css">
+</head>
+<body>
+  <div class="card">
+    <h1>Welcome to BloodConnect</h1>
+    <div class="role-switch">
+      <button id="btnUser" class="role-btn active" type="button">Join as User</button>
+      <button id="btnDonor" class="role-btn" type="button">Join as Donor</button>
+    </div>
+
+    <form id="authForm" autocomplete="on" novalidate>
+      <div>
+        <label for="name">Full Name</label>
+        <input id="name" name="name" type="text">
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required>
+      </div>
+      <div>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" minlength="6" required>
+      </div>
+      <div id="bloodGroupWrap">
+        <label for="bloodGroup">Blood Group</label>
+        <select id="bloodGroup" name="bloodGroup">
+          <option value="">Select blood group</option>
+          <option>O+</option>
+          <option>O-</option>
+          <option>A+</option>
+          <option>A-</option>
+          <option>B+</option>
+          <option>B-</option>
+          <option>AB+</option>
+          <option>AB-</option>
+        </select>
+      </div>
+      <div class="error" id="error"></div>
+      <div class="role-switch">
+        <button id="btnCreate" class="submit" type="button">Create Account</button>
+        <button id="btnSignIn" class="role-btn" type="button">Sign In</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./auth.js"></script>
+</body>
+</html>

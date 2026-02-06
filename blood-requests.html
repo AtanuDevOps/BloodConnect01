@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Blood Requests · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="brand">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div class="nav-right">
+      <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted); margin-right: 10px;">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </button>
+      <div class="avatar-circle" id="navAvatar" style="width:32px; height:32px; font-size:14px; display:none;"></div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="welcome" style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <h1>Blood Requests</h1>
+        <p class="muted">Recent blood needs from the community</p>
+      </div>
+      <button id="makeRequestBtn" class="action-btn">
+        <i class="fa-solid fa-plus"></i> Make Request
+      </button>
+    </div>
+
+    <!-- Requests Feed -->
+    <div id="requestsFeed" class="requests-grid">
+      <div class="no-results">Loading requests...</div>
+    </div>
+  </div>
+
+  <!-- Make Request Modal -->
+  <div id="requestModal" class="modal">
+    <div class="modal-content card">
+      <h2 style="margin-bottom:16px">Make a Blood Request</h2>
+      <form id="requestForm" style="display:grid; gap:12px;">
+        <div>
+          <label class="label-sm">Patient Name</label>
+          <input type="text" id="reqPatientName" class="input-field" required>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div>
+            <label class="label-sm">Age</label>
+            <input type="number" id="reqPatientAge" class="input-field" required>
+          </div>
+          <div>
+            <label class="label-sm">Blood Group</label>
+            <select id="reqBloodGroup" class="input-field" required>
+              <option value="">Select</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>AB+</option><option>AB-</option>
+              <option>O+</option><option>O-</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="label-sm">Hospital Name</label>
+          <input type="text" id="reqHospital" class="input-field" required>
+        </div>
+        <div>
+          <label class="label-sm">Description / Note</label>
+          <textarea id="reqDescription" class="input-field" rows="3" placeholder="Urgency, contact details (optional), etc." required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="closeRequestModal" class="action-btn secondary">Cancel</button>
+          <button type="submit" class="action-btn">Post Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Respond Modal (Donor Only) -->
+  <div id="responseModal" class="modal">
+    <div class="modal-content card">
+      <h2 style="margin-bottom:16px">Respond to Request</h2>
+      <p class="muted" style="font-size:14px; margin-bottom:12px;">Let them know you can help.</p>
+      <form id="responseForm" style="display:grid; gap:12px;">
+        <input type="hidden" id="respRequestId">
+        <div>
+          <label class="label-sm">Message</label>
+          <textarea id="respMessage" class="input-field" rows="3" placeholder="I am available to donate..." required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="closeResponseModal" class="action-btn secondary">Cancel</button>
+          <button type="submit" class="action-btn">Send Response</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./js/blood-requests.js"></script>
+</body>
+</html>

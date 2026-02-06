@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Find Donors · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    /* Specific styles for search section */
+    .search-section {
+      background: #fff;
+      padding: 20px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      display: grid;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .search-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 150px;
+      gap: 16px;
+    }
+    .search-input-group {
+      position: relative;
+    }
+    .search-input-group i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+    .search-input {
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .search-input:focus, .filter-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .filter-select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      background-color: #fff;
+    }
+    
+    /* Donors Grid */
+    .donors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .donor-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .donor-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(206,17,38,0.08);
+    }
+    .blood-badge {
+      width: 50px;
+      height: 50px;
+      background: #fff0f2;
+      color: var(--primary);
+      border: 1px solid #ffd4da;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .donor-info h3 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .donor-location {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .no-results {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+      background: #fff;
+      border-radius: 14px;
+      border: 1px dashed var(--border);
+    }
+
+    @media (max-width: 600px) {
+      .search-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="brand">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div class="nav-right">
+      <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted)">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="welcome" style="margin-bottom: 10px;">
+      <h1>Find Active Donors</h1>
+      <p class="muted">Search for donors by name or filter by blood group</p>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="search-section">
+      <div class="search-grid">
+        <div class="search-input-group">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search by name...">
+        </div>
+        <div class="search-input-group">
+          <i class="fa-solid fa-location-dot"></i>
+          <input type="text" id="locationInput" class="search-input" placeholder="Search by location...">
+        </div>
+        <select id="bloodFilter" class="filter-select">
+          <option value="All">All Blood</option>
+          <option value="A+">A+</option>
+          <option value="A-">A-</option>
+          <option value="B+">B+</option>
+          <option value="B-">B-</option>
+          <option value="AB+">AB+</option>
+          <option value="AB-">AB-</option>
+          <option value="O+">O+</option>
+          <option value="O-">O-</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="donorsGrid" class="donors-grid">
+      <!-- Donors will be injected here -->
+      <div class="no-results">Loading donors...</div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script src="./js/find-donors.js"></script>
+</body>
+</html>
