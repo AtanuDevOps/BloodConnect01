@@ -2,7 +2,7 @@
 // Requires config/firebase-config.js to define window.firebaseConfig
 
 (function () {
-  const app = firebase.initializeApp(window.firebaseConfig);
+  const app = (firebase.apps && firebase.apps.length) ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
   const auth = firebase.auth(app);
   const db = firebase.firestore(app);
 
@@ -14,6 +14,26 @@
   const errorEl = document.getElementById("error");
 
   let selectedRole = "user";
+
+  try {
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (_) {}
+
+  auth.onAuthStateChanged(async function (user) {
+    if (!user) return;
+    try {
+      const uid = user.uid;
+      const snap = await db.collection("users").doc(uid).get();
+      const role = (snap.exists && snap.data().role) ? snap.data().role : "user";
+      if (role === "donor") {
+        window.location.href = "donor-dashboard.html";
+      } else {
+        window.location.href = "user-dashboard.html";
+      }
+    } catch (e) {
+      console.error("[Signup] Failed to check existing session:", e);
+    }
+  });
 
   btnUser.addEventListener("click", function () {
     selectedRole = "user";
@@ -70,7 +90,11 @@
       console.log("[Signup] Writing Firestore users doc for uid:", uid, userData);
       await db.collection("users").doc(uid).set(userData);
       console.log("[Signup] Firestore write successful. Redirecting to dashboard…");
-      window.location.href = "dashboard.html";
+      if (selectedRole === "donor") {
+        window.location.href = "donor-dashboard.html";
+      } else {
+        window.location.href = "user-dashboard.html";
+      }
     } catch (err) {
       errorEl.textContent = err && err.message ? err.message : "Signup failed";
       console.error("[Signup] Error during signup:", err);
@@ -105,36 +129,4 @@
   }
 
   window.upgradeToDonor = upgradeToDonor;
-  window.currentUserProfile = null;
-  function startAuthProfileListener() {
-    console.log("[AuthState] Starting auth state listener");
-    auth.onAuthStateChanged(async function (user) {
-      if (!user) {
-        console.warn("[AuthState] No user logged in, redirecting to signin.html");
-        window.location.href = "signin.html";
-        return;
-      }
-      try {
-        const uid = user.uid;
-        console.log("[AuthState] User logged in:", uid);
-        const snap = await db.collection("users").doc(uid).get();
-        if (snap.exists) {
-          window.currentUserProfile = snap.data();
-          console.log("[AuthState] Loaded profile:", window.currentUserProfile);
-        } else {
-          window.currentUserProfile = null;
-          console.warn("[AuthState] Profile document not found for uid:", uid);
-        }
-      } catch (err) {
-        console.error("[AuthState] Failed to load profile:", err);
-      }
-    });
-  }
-  window.startAuthProfileListener = startAuthProfileListener;
-  try {
-    var path = (location.pathname || "").toLowerCase();
-    if (!path.endsWith("signup.html")) {
-      startAuthProfileListener();
-    }
-  } catch (_) {}
 })(); 

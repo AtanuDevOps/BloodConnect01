@@ -1,7 +1,7 @@
 // Auth (Signup + Login) using Firebase compat SDK
 // Assumes firebase-app-compat.js, firebase-auth-compat.js, firebase-firestore-compat.js and firebase-config.js are loaded
 (function () {
-  var app = firebase.initializeApp(window.firebaseConfig);
+  var app = (firebase.apps && firebase.apps.length) ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
   var auth = firebase.auth(app);
   var db = firebase.firestore(app);
 
@@ -14,6 +14,26 @@
   var errorEl = document.getElementById("error");
 
   var selectedRole = "user";
+
+  try {
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  } catch (_) {}
+
+  auth.onAuthStateChanged(async function (user) {
+    if (!user) return;
+    try {
+      var uid = user.uid;
+      var snap = await db.collection("users").doc(uid).get();
+      var role = (snap.exists && snap.data().role) ? snap.data().role : "user";
+      if (role === "donor") {
+        window.location.href = "donor-dashboard.html";
+      } else {
+        window.location.href = "user-dashboard.html";
+      }
+    } catch (e) {
+      console.error("[Auth] Failed to check existing session:", e);
+    }
+  });
 
   function setRole(role) {
     selectedRole = role;
