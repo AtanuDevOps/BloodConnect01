@@ -91,42 +91,64 @@
     }
 
     donorsGrid.innerHTML = filtered.map(donor => {
+      const lastMs = tsMillis(donor.lastDonationDate);
+      const endMs = tsMillis(donor.donationCooldownEnd);
+      const now = Date.now();
+      const cooldownActive = !!(endMs && now <= endMs);
       let phoneHtml = "";
-      const isLocked = donor.profileLocked === true;
-      
-      if (!isLocked) {
-        phoneHtml = `
-          <div class="donor-location">
-            <i class="fa-solid fa-phone"></i>
-            <span>${escapeHtml(donor.phone || "No phone")}</span>
+      let availabilityBadge = "";
+      if (cooldownActive) {
+        const days = Math.max(0, Math.floor((now - (lastMs || now)) / 86400000));
+        availabilityBadge = `
+          <div style="margin-top:6px; font-size:12px; color:#CE1126;">
+            <span style="background:#fff0f2; color:#CE1126; padding:2px 8px; border-radius:12px; border:1px solid #ffd4da;">
+              Temporarily unavailable — recently donated
+            </span>
+            <div style="margin-top:4px; font-size:12px;">Donated ${days} days ago</div>
           </div>
         `;
       } else {
-        const requests = donor.accessRequests || [];
-        const myRequest = requests.find(r => r.requesterId === currentUser.uid);
-        
-        if (myRequest && myRequest.status === 'approved') {
+        availabilityBadge = `
+          <div style="margin-top:6px; font-size:12px; color:green;">
+            <span style="background:#e9f9ee; color:green; padding:2px 8px; border-radius:12px; border:1px solid #c8f0d2;">
+              Available donor
+            </span>
+          </div>
+        `;
+        const isLocked = donor.profileLocked === true;
+        if (!isLocked) {
           phoneHtml = `
             <div class="donor-location">
               <i class="fa-solid fa-phone"></i>
               <span>${escapeHtml(donor.phone || "No phone")}</span>
             </div>
-            <div style="font-size:10px; color:green; margin-top:4px;">
-              <i class="fa-solid fa-check-circle"></i> Access Approved
-            </div>
-          `;
-        } else if (myRequest && myRequest.status === 'pending') {
-          phoneHtml = `
-            <button class="action-btn secondary" disabled style="width:100%; margin-top:8px; font-size:12px; padding:6px; opacity:0.7;">
-              <i class="fa-solid fa-clock"></i> Request Pending
-            </button>
           `;
         } else {
-          phoneHtml = `
-            <button onclick="requestAccess('${donor.id}')" class="action-btn" style="width:100%; margin-top:8px; font-size:12px; padding:6px;">
-              <i class="fa-solid fa-lock"></i> Request Contact
-            </button>
-          `;
+          const requests = donor.accessRequests || [];
+          const myRequest = currentUser ? requests.find(r => r.requesterId === currentUser.uid) : null;
+          if (myRequest && myRequest.status === 'approved') {
+            phoneHtml = `
+              <div class="donor-location">
+                <i class="fa-solid fa-phone"></i>
+                <span>${escapeHtml(donor.phone || "No phone")}</span>
+              </div>
+              <div style="font-size:10px; color:green; margin-top:4px;">
+                <i class="fa-solid fa-check-circle"></i> Access Approved
+              </div>
+            `;
+          } else if (myRequest && myRequest.status === 'pending') {
+            phoneHtml = `
+              <button class="action-btn secondary" disabled style="width:100%; margin-top:8px; font-size:12px; padding:6px; opacity:0.7;">
+                <i class="fa-solid fa-clock"></i> Request Pending
+              </button>
+            `;
+          } else {
+            phoneHtml = `
+              <button onclick="requestAccess('${donor.id}')" class="action-btn" style="width:100%; margin-top:8px; font-size:12px; padding:6px;">
+                <i class="fa-solid fa-lock"></i> Request Contact
+              </button>
+            `;
+          }
         }
       }
 
@@ -147,7 +169,8 @@
             <i class="fa-solid fa-location-dot"></i>
             <span>${escapeHtml(donor.location)}</span>
           </div>
-          ${phoneHtml}
+          ${availabilityBadge}
+          ${cooldownActive ? "" : phoneHtml}
         </div>
       </div>
     `}).join("");
@@ -210,6 +233,13 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
+  }
+  function tsMillis(ts) {
+    if (!ts) return null;
+    if (typeof ts.toMillis === "function") return ts.toMillis();
+    if (typeof ts.seconds === "number") return ts.seconds * 1000;
+    if (typeof ts === "number") return ts;
+    return null;
   }
 
 })();

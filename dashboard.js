@@ -54,6 +54,7 @@
           if (window.currentUserProfile.role === "donor") {
             loadAccessRequests();
           }
+          updateDonationStatusUI();
         } else {
           window.currentUserProfile = null;
           console.warn("[Dashboard] Profile document not found for uid:", uid);
@@ -85,6 +86,7 @@
   // Load count on dashboard load
   loadTotalDonors();
   loadActiveRequests();
+  updateDonationStatusUI();
 
   // Task 1.5: Fix "Active Blood Requests" Count
   async function loadActiveRequests() {
@@ -285,6 +287,64 @@
   function escapeHtml(text) {
     if (!text) return "";
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function tsMillis(ts) {
+    if (!ts) return null;
+    if (typeof ts.toMillis === "function") return ts.toMillis();
+    if (typeof ts.seconds === "number") return ts.seconds * 1000;
+    if (typeof ts === "number") return ts;
+    return null;
+  }
+
+  function updateDonationStatusUI() {
+    var el = document.getElementById("lastDonationStatValue");
+    var btn = document.getElementById("donationStatusBtn");
+    if (!el) return;
+    var lastMs = tsMillis(window.currentUserProfile && window.currentUserProfile.lastDonationDate);
+    var endMs = tsMillis(window.currentUserProfile && window.currentUserProfile.donationCooldownEnd);
+    var now = Date.now();
+    if (lastMs) {
+      var days = Math.max(0, Math.floor((now - lastMs) / 86400000));
+      var nextDate = new Date(endMs || (lastMs + 90 * 86400000));
+      var nextStr = nextDate.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+      el.innerHTML = "You donated blood " + days + " days ago<br>Next eligible date: " + nextStr;
+    } else {
+      el.textContent = "No donation record yet";
+    }
+    var active = !!(endMs && now <= endMs);
+    if (btn) {
+      btn.disabled = active;
+      btn.title = active ? "You can update donation status again after cooldown ends." : "";
+    }
+  }
+
+  var donationBtn = document.getElementById("donationStatusBtn");
+  if (donationBtn) {
+    donationBtn.addEventListener("click", async function () {
+      var user = auth.currentUser;
+      if (!user) return;
+      try {
+        donationBtn.disabled = true;
+        var nowMs = Date.now();
+        var endTs = firebase.firestore.Timestamp.fromMillis(nowMs + 90 * 86400000);
+        await db.collection("users").doc(user.uid).update({
+          lastDonationDate: firebase.firestore.FieldValue.serverTimestamp(),
+          donationCooldownEnd: endTs
+        });
+        var snap = await db.collection("users").doc(user.uid).get();
+        if (snap.exists) {
+          window.currentUserProfile = Object.assign({}, window.currentUserProfile, snap.data());
+        }
+        updateDonationStatusUI();
+        alert("Donation recorded successfully. You will be available again after 3 months.");
+      } catch (e) {
+        console.error(e);
+        alert("Failed to record donation.");
+      } finally {
+        updateDonationStatusUI();
+      }
+    });
   }
 
 })(); 
