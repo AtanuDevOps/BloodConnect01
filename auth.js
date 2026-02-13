@@ -22,16 +22,9 @@
   auth.onAuthStateChanged(async function (user) {
     if (!user) return;
     try {
-      var uid = user.uid;
-      var snap = await db.collection("users").doc(uid).get();
-      var role = (snap.exists && snap.data().role) ? snap.data().role : "user";
-      if (role === "donor") {
-        window.location.href = "donor-dashboard.html";
-      } else {
-        window.location.href = "user-dashboard.html";
-      }
+      window.location.href = "blood-requests.html";
     } catch (e) {
-      console.error("[Auth] Failed to check existing session:", e);
+      console.error("[Auth] Failed to route to feed:", e);
     }
   });
 
@@ -117,11 +110,7 @@
       var profile = snap.data();
       console.log("[Auth] Loaded profile:", profile);
 
-      if (profile.role === "donor") {
-        window.location.href = "donor-dashboard.html";
-      } else {
-        window.location.href = "user-dashboard.html";
-      }
+      window.location.href = "blood-requests.html";
     } catch (err) {
       console.error("[Auth] Sign in error:", err);
       errorEl.textContent = err && err.message ? err.message : "Sign-in failed";

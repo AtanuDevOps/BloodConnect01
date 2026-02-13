@@ -9,17 +9,18 @@
 </head>
 <body>
   <!-- Navbar -->
-  <nav class="navbar">
-    <div class="brand">
+  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
+    <div class="nav-left" id="profileLink" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <div class="avatar-circle" id="navProfile" style="width:32px; height:32px; font-size:14px;"></div>
+        <div style="font-size:11px; color:var(--muted); line-height:1; margin-top:4px;">Profile</div>
+      </div>
+    </div>
+    <div class="brand" style="text-align:center;">
       <i class="fa-solid fa-droplet"></i>
       <span>BloodConnect</span>
     </div>
-    <div class="nav-right">
-      <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted); margin-right: 10px;">
-        <i class="fa-solid fa-arrow-left"></i> Back
-      </button>
-      <div class="avatar-circle" id="navAvatar" style="width:32px; height:32px; font-size:14px; display:none;"></div>
-    </div>
+    <div class="nav-right" style="min-width:32px; height:32px;"></div>
   </nav>
 
   <div class="container">

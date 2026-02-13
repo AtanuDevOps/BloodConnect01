@@ -22,16 +22,9 @@
   auth.onAuthStateChanged(async function (user) {
     if (!user) return;
     try {
-      const uid = user.uid;
-      const snap = await db.collection("users").doc(uid).get();
-      const role = (snap.exists && snap.data().role) ? snap.data().role : "user";
-      if (role === "donor") {
-        window.location.href = "donor-dashboard.html";
-      } else {
-        window.location.href = "user-dashboard.html";
-      }
+      window.location.href = "blood-requests.html";
     } catch (e) {
-      console.error("[Signup] Failed to check existing session:", e);
+      console.error("[Signup] Failed to route to feed:", e);
     }
   });
 
@@ -89,12 +82,8 @@
 
       console.log("[Signup] Writing Firestore users doc for uid:", uid, userData);
       await db.collection("users").doc(uid).set(userData);
-      console.log("[Signup] Firestore write successful. Redirecting to dashboard…");
-      if (selectedRole === "donor") {
-        window.location.href = "donor-dashboard.html";
-      } else {
-        window.location.href = "user-dashboard.html";
-      }
+      console.log("[Signup] Firestore write successful. Redirecting to feed…");
+      window.location.href = "blood-requests.html";
     } catch (err) {
       errorEl.textContent = err && err.message ? err.message : "Signup failed";
       console.error("[Signup] Error during signup:", err);

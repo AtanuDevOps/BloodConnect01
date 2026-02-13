@@ -12,7 +12,8 @@
   const requestForm = document.getElementById("requestForm");
   const responseModal = document.getElementById("responseModal");
   const responseForm = document.getElementById("responseForm");
-  const backBtn = document.getElementById("backBtn");
+  const profileLink = document.getElementById("profileLink");
+  const navProfile = document.getElementById("navProfile");
 
   // 1. Auth Guard
   auth.onAuthStateChanged(async (user) => {
@@ -28,12 +29,10 @@
         setupUI();
         loadRequests();
         
-        // Render Nav Avatar
-        const navAvatar = document.getElementById("navAvatar");
-        if(navAvatar) {
-          navAvatar.style.display = "flex";
-          navAvatar.style.backgroundColor = currentUserProfile.profileColor || "#CE1126";
-          navAvatar.textContent = (currentUserProfile.name || "U").charAt(0).toUpperCase();
+        // Render Profile Icon (top-left)
+        if(navProfile) {
+          navProfile.style.backgroundColor = currentUserProfile.profileColor || "#CE1126";
+          navProfile.textContent = (currentUserProfile.name || "U").charAt(0).toUpperCase();
         }
       }
     } catch (e) {
@@ -43,8 +42,9 @@
 
   // 2. UI Setup
   function setupUI() {
-    if (backBtn) {
-      backBtn.addEventListener("click", () => {
+    if (profileLink) {
+      profileLink.addEventListener("click", () => {
+        if (!currentUserProfile) return;
         if (currentUserProfile.role === "donor") window.location.href = "donor-dashboard.html";
         else window.location.href = "user-dashboard.html";
       });
