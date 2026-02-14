@@ -14,6 +14,7 @@
   const responseForm = document.getElementById("responseForm");
   const profileLink = document.getElementById("profileLink");
   const navProfile = document.getElementById("navProfile");
+  const foundationBtn = document.getElementById("foundationBtn");
 
   // 1. Auth Guard
   auth.onAuthStateChanged(async (user) => {
@@ -47,6 +48,11 @@
         if (!currentUserProfile) return;
         if (currentUserProfile.role === "donor") window.location.href = "donor-dashboard.html";
         else window.location.href = "user-dashboard.html";
+      });
+    }
+    if (foundationBtn) {
+      foundationBtn.addEventListener("click", () => {
+        window.location.href = "foundation.html";
       });
     }
 

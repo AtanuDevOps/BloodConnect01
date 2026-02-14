@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Foundation Community · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    .foundation-grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 720px) { .foundation-grid { grid-template-columns: 1fr; } }
+    .foundation-card { padding:16px; border:1px solid var(--border); border-radius:12px; background:#fff; display:flex; gap:12px; align-items:flex-start; cursor:pointer; }
+    .foundation-card .icon { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#fff0f2; color:var(--primary); font-size:18px; }
+    .foundation-card .content { display:flex; flex-direction:column; gap:6px; }
+    .foundation-card .title { font-weight:700; }
+    .foundation-card .subtitle { font-size:13px; color: var(--muted); }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script>
+    (function(){
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      auth.onAuthStateChanged(function(user){
+        if(!user){
+          window.location.href = "index.html";
+        }
+      });
+      window.addEventListener('DOMContentLoaded', function(){
+        var backBtn = document.getElementById('foundationBackBtn');
+        if(backBtn){
+          backBtn.addEventListener('click', function(){
+            window.location.href = 'blood-requests.html';
+          });
+        }
+        var createCard = document.getElementById('createFoundation');
+        var joinCard = document.getElementById('joinFoundation');
+        if(createCard){
+          createCard.addEventListener('click', function(){
+            alert('Foundation creation form coming next.');
+          });
+        }
+        if(joinCard){
+          joinCard.addEventListener('click', function(){
+            alert('Join foundation feature coming next.');
+          });
+        }
+      });
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
+    <button id="foundationBackBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </button>
+    <div class="brand" style="text-align:center;">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div style="width:32px; height:32px;"></div>
+  </nav>
+
+  <main class="container">
+    <div class="welcome" style="margin-bottom: 10px;">
+      <h1>Foundation Community</h1>
+      <p class="muted">Organize, join, and participate in blood donation campaigns.</p>
+    </div>
+
+    <section class="foundation-grid">
+      <div id="createFoundation" class="foundation-card">
+        <div class="icon"><i class="fa-solid fa-circle-plus"></i></div>
+        <div class="content">
+          <div class="title">Create Foundation</div>
+          <div class="subtitle">Start your own blood donation community, run campaigns, and manage donors.</div>
+        </div>
+      </div>
+
+      <div id="joinFoundation" class="foundation-card">
+        <div class="icon"><i class="fa-solid fa-people-group"></i></div>
+        <div class="content">
+          <div class="title">Join Foundation</div>
+          <div class="subtitle">Join an existing foundation to participate in campaigns and community activities.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
