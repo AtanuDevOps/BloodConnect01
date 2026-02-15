@@ -39,7 +39,7 @@
         var joinCard = document.getElementById('joinFoundation');
         if(createCard){
           createCard.addEventListener('click', function(){
-            alert('Foundation creation form coming next.');
+            window.location.href = 'create-foundation.html';
           });
         }
         if(joinCard){
@@ -64,6 +64,16 @@
   </nav>
 
   <main class="container">
+    <section id="myFoundationSection" class="card" style="display:none; margin-bottom: 16px; padding:16px;">
+      <h3 style="margin-bottom:10px;">My Foundation</h3>
+      <div id="myFoundationCard" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px; border:1px solid var(--border); border-radius:12px; background:#fff0f2; cursor:pointer;">
+        <div>
+          <div id="myFoundationName" style="font-weight:700; color:#CE1126;">—</div>
+          <div id="myFoundationLocation" class="muted" style="font-size:13px;">—</div>
+        </div>
+        <button class="action-btn" id="openFoundationBtn" style="white-space:nowrap;"><i class="fa-solid fa-users"></i> Open Dashboard</button>
+      </div>
+    </section>
     <div class="welcome" style="margin-bottom: 10px;">
       <h1>Foundation Community</h1>
       <p class="muted">Organize, join, and participate in blood donation campaigns.</p>
@@ -87,5 +97,42 @@
       </div>
     </section>
   </main>
+  <script>
+    (function(){
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      var db = firebase.firestore(app);
+      auth.onAuthStateChanged(async function(user){
+        if(!user) return;
+        try {
+          var snap = await db.collection("foundation_requests")
+            .where("ownerId","==",user.uid)
+            .where("status","==","approved")
+            .get();
+          if(snap.empty) return;
+          var doc = snap.docs[0];
+          var data = doc.data();
+          var section = document.getElementById("myFoundationSection");
+          var nameEl = document.getElementById("myFoundationName");
+          var locEl = document.getElementById("myFoundationLocation");
+          var card = document.getElementById("myFoundationCard");
+          var btn = document.getElementById("openFoundationBtn");
+          if(section && nameEl && locEl && card && btn){
+            section.style.display = "block";
+            nameEl.textContent = data.name || "My Foundation";
+            locEl.textContent = data.location || "Location not set";
+            var open = function(){
+              var url = "foundation-dashboard.html?foundationId=" + encodeURIComponent(doc.id);
+              window.location.href = url;
+            };
+            card.addEventListener("click", open);
+            btn.addEventListener("click", function(e){ e.stopPropagation(); open(); });
+          }
+        } catch(e){
+          // silent fail to keep UI clean
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Foundation Application Status · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    .center-wrap { display:flex; align-items:center; justify-content:center; padding:20px; }
+    .status-card { width:100%; max-width:520px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px; text-align:center; }
+    .status-title { font-size:22px; font-weight:700; margin-bottom:10px; }
+    .status-text { font-size:14px; color:var(--muted); margin-bottom:16px; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script>
+    (function(){
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      var db = firebase.firestore(app);
+      var statusTextEl, goBtn;
+      auth.onAuthStateChanged(async function(user){
+        if(!user){ window.location.href = "index.html"; return; }
+        try {
+          var snap = await db.collection("foundation_requests").where("ownerId","==",user.uid).get();
+          var req = null;
+          snap.forEach(function(doc){ var data = doc.data(); if(!req || (data.createdAt && req.createdAt && data.createdAt.seconds > req.createdAt.seconds)) req = data; if(!req && data) req = data; });
+          if(!req){
+            statusTextEl.textContent = "No foundation application found.";
+            goBtn.style.display = "none";
+            return;
+          }
+          if(req.status === "approved"){
+            statusTextEl.textContent = "Congratulations! Your foundation has been approved.";
+            goBtn.style.display = "inline-flex";
+          } else {
+            statusTextEl.textContent = "Your application is under admin review.";
+            goBtn.style.display = "none";
+          }
+        } catch(e){
+          statusTextEl.textContent = "Failed to load application status.";
+          goBtn.style.display = "none";
+        }
+      });
+      window.addEventListener("DOMContentLoaded", function(){
+        statusTextEl = document.getElementById("statusText");
+        goBtn = document.getElementById("goFoundationBtn");
+        document.getElementById("backBtn").addEventListener("click", function(){ window.location.href = "foundation.html"; });
+        goBtn.addEventListener("click", function(){ window.location.href = "foundation.html"; });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
+    <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </button>
+    <div class="brand" style="text-align:center;">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div style="width:32px; height:32px;"></div>
+  </nav>
+  <main class="container center-wrap">
+    <div class="status-card">
+      <div class="status-title">Foundation Application Status</div>
+      <div id="statusText" class="status-text">Checking status…</div>
+      <button id="goFoundationBtn" class="action-btn" style="display:none;"><i class="fa-solid fa-users"></i> Go to Foundation Dashboard</button>
+    </div>
+  </main>
+</body>
+</html>

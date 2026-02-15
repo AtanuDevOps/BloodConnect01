@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Create Foundation · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    .center-wrap { display:flex; align-items:center; justify-content:center; padding:20px; }
+    .form-card { width:100%; max-width:480px; background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px; }
+    .label-sm { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    .input-field { width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; }
+    .textarea-field { width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; resize:vertical; }
+    .error { color:#CE1126; font-size:13px; margin-top:8px; min-height:18px; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script>
+    (function(){
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      var db = firebase.firestore(app);
+      var currentUser = null;
+      var ownerName = "";
+      auth.onAuthStateChanged(async function(user){
+        if(!user){ window.location.href = "index.html"; return; }
+        currentUser = user;
+        try {
+          var snap = await db.collection("users").doc(user.uid).get();
+          if (snap.exists) ownerName = snap.data().name || user.displayName || "";
+        } catch(e) {}
+      });
+      window.addEventListener("DOMContentLoaded", function(){
+        var backBtn = document.getElementById("backBtn");
+        var form = document.getElementById("foundationForm");
+        var nameEl = document.getElementById("fdName");
+        var locEl = document.getElementById("fdLocation");
+        var descEl = document.getElementById("fdDescription");
+        var errorEl = document.getElementById("error");
+        var submitBtn = document.getElementById("applyBtn");
+        backBtn.addEventListener("click", function(){ window.location.href = "foundation.html"; });
+        form.addEventListener("submit", async function(e){
+          e.preventDefault();
+          errorEl.textContent = "";
+          var name = (nameEl.value||"").trim();
+          var loc = (locEl.value||"").trim();
+          var desc = (descEl.value||"").trim();
+          if(!name || !loc || !desc){ errorEl.textContent = "All fields are required."; return; }
+          if(!currentUser){ errorEl.textContent = "Not authenticated."; return; }
+          submitBtn.disabled = true; submitBtn.textContent = "Applying...";
+          try {
+            var pendingSnap = await db.collection("foundation_requests")
+              .where("ownerId","==",currentUser.uid)
+              .where("status","==","pending")
+              .get();
+            if(!pendingSnap.empty){
+              errorEl.textContent = "You already have a pending application.";
+              submitBtn.disabled = false; submitBtn.textContent = "Apply for Foundation";
+              return;
+            }
+            var docData = {
+              name: name,
+              location: loc,
+              description: desc,
+              ownerId: currentUser.uid,
+              ownerName: ownerName || "",
+              status: "pending",
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            await db.collection("foundation_requests").add(docData);
+            window.location.href = "foundation-status.html";
+          } catch(err){
+            errorEl.textContent = "Failed to submit application.";
+            submitBtn.disabled = false; submitBtn.textContent = "Apply for Foundation";
+          }
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
+    <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </button>
+    <div class="brand" style="text-align:center;">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div style="width:32px; height:32px;"></div>
+  </nav>
+  <main class="container center-wrap">
+    <div class="form-card">
+      <h2 style="margin-bottom:12px;">Create Foundation</h2>
+      <p class="muted" style="margin-bottom:12px;">Start your blood donation foundation. Fill the details and apply.</p>
+      <form id="foundationForm" style="display:grid; gap:12px;">
+        <div>
+          <label class="label-sm">Foundation Name</label>
+          <input id="fdName" type="text" class="input-field" required>
+        </div>
+        <div>
+          <label class="label-sm">Location</label>
+          <input id="fdLocation" type="text" class="input-field" required>
+        </div>
+        <div>
+          <label class="label-sm">Description</label>
+          <textarea id="fdDescription" class="textarea-field" rows="4" required></textarea>
+        </div>
+        <div class="error" id="error"></div>
+        <button id="applyBtn" type="submit" class="action-btn"><i class="fa-solid fa-paper-plane"></i> Apply for Foundation</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

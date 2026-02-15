@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Foundation Dashboard · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    .info-card { padding:16px; border:1px solid var(--border); border-radius:12px; background:#fff; margin-bottom:16px; }
+    .grid-3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; }
+    @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr; } }
+    .placeholder-card { padding:16px; border:1px solid var(--border); border-radius:12px; background:#fff; }
+    .muted-sm { font-size:13px; color:var(--muted); }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script>
+    (function(){
+      function getParam(name) {
+        var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+        return m && decodeURIComponent(m[1].replace(/\+/g, ' '));
+      }
+      function tsToDate(ts) {
+        if (!ts) return null;
+        if (typeof ts.toMillis === "function") return new Date(ts.toMillis());
+        if (typeof ts.seconds === "number") return new Date(ts.seconds * 1000);
+        return null;
+      }
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      var db = firebase.firestore(app);
+      var fid = getParam('foundationId');
+      auth.onAuthStateChanged(async function(user){
+        if(!user){ window.location.href = "index.html"; return; }
+        if(!fid){ document.getElementById('fdName').textContent = "Invalid Foundation"; return; }
+        try {
+          var doc = await db.collection("foundation_requests").doc(fid).get();
+          if(!doc.exists){
+            document.getElementById('fdName').textContent = "Foundation Not Found";
+            return;
+          }
+          var d = doc.data();
+          document.getElementById('fdName').textContent = d.name || "Foundation";
+          document.getElementById('fdLocation').textContent = d.location || "Location not set";
+          document.getElementById('fdDescription').textContent = d.description || "No description";
+          var created = tsToDate(d.createdAt);
+          document.getElementById('fdCreated').textContent = created ? created.toLocaleDateString() : "—";
+        } catch(e){
+          document.getElementById('fdName').textContent = "Error loading Foundation";
+        }
+      });
+      window.addEventListener('DOMContentLoaded', function(){
+        document.getElementById('backBtn').addEventListener('click', function(){
+          window.location.href = 'foundation.html';
+        });
+      });
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
+    <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
+      <i class="fa-solid fa-arrow-left"></i> Back to Foundation
+    </button>
+    <div class="brand" style="text-align:center;">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div style="width:32px; height:32px;"></div>
+  </nav>
+
+  <main class="container">
+    <div class="welcome" style="margin-bottom: 10px;">
+      <h1 id="fdName">Foundation</h1>
+      <p id="fdLocation" class="muted">—</p>
+    </div>
+
+    <section class="info-card">
+      <div style="font-weight:700; margin-bottom:6px;">About</div>
+      <div id="fdDescription" class="muted-sm">—</div>
+      <div style="margin-top:10px;" class="muted-sm"><i class="fa-solid fa-calendar"></i> Created: <span id="fdCreated">—</span></div>
+    </section>
+
+    <section class="grid-3">
+      <div class="placeholder-card">
+        <div style="font-weight:700; margin-bottom:6px;">Campaign Posts</div>
+        <div class="muted-sm">No campaigns yet.</div>
+      </div>
+      <div class="placeholder-card">
+        <div style="font-weight:700; margin-bottom:6px;">Members</div>
+        <div class="muted-sm">No members yet.</div>
+      </div>
+      <div class="placeholder-card">
+        <div style="font-weight:700; margin-bottom:6px;">Admin Controls</div>
+        <div class="muted-sm">Admin tools coming soon.</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
