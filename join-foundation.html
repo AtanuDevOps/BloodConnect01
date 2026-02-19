@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Join a Foundation · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    .search-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--border); border-radius:999px; background:#fff; }
+    .search-input { flex:1; border:none; outline:none; font-size:14px; }
+    .foundation-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:12px; }
+    @media (max-width: 720px) { .foundation-grid { grid-template-columns: 1fr; } }
+    .foundation-card { padding:12px; border:1px solid var(--border); border-radius:12px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .foundation-info { display:flex; flex-direction:column; gap:4px; }
+    .foundation-name { font-weight:700; }
+    .foundation-desc { font-size:13px; color:var(--muted); }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script>
+    (function(){
+      const app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      const auth = firebase.auth(app);
+      const db = firebase.firestore(app);
+      let currentUser = null, currentUserProfile = null, foundations = [];
+      function escapeHtml(text){ if(!text) return ""; return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+      function short(text){ const t = text||""; return t.length>120 ? t.slice(0,117)+"..." : t; }
+      auth.onAuthStateChanged(async (user)=>{
+        if(!user){ window.location.href = "index.html"; return; }
+        currentUser = user;
+        try {
+          const doc = await db.collection("users").doc(user.uid).get();
+          if(doc.exists) currentUserProfile = doc.data();
+        } catch(e){}
+        loadFoundations();
+      });
+      async function loadFoundations(){
+        try{
+          const snap = await db.collection("foundation_requests").where("status","==","approved").get();
+          foundations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          foundations.sort((a,b)=>{
+            const as = a.createdAt && a.createdAt.seconds || 0;
+            const bs = b.createdAt && b.createdAt.seconds || 0;
+            return bs - as;
+          });
+          render();
+        }catch(e){
+          document.getElementById("foundationsGrid").innerHTML = '<div class="no-results">Failed to load foundations.</div>';
+        }
+      }
+      function render(){
+        const term = document.getElementById("searchInput").value.trim().toLowerCase();
+        const list = foundations.filter(f => (f.name||"").toLowerCase().includes(term));
+        if(list.length===0){
+          document.getElementById("foundationsGrid").innerHTML = '<div class="no-results">No foundations found.</div>';
+          return;
+        }
+        document.getElementById("foundationsGrid").innerHTML = list.map(f=>`
+          <div class="foundation-card">
+            <div class="foundation-info">
+              <div class="foundation-name">${escapeHtml(f.name||"Foundation")}</div>
+              <div class="muted" style="font-size:13px;">${escapeHtml(f.location||"Location not set")}</div>
+              <div class="foundation-desc">${escapeHtml(short(f.description))}</div>
+            </div>
+            <button class="action-btn" onclick="joinFoundation('${f.id}','${escapeHtml(f.name||"Foundation")}','${escapeHtml(f.ownerId||"")}')">Join</button>
+          </div>
+        `).join("");
+      }
+      window.addEventListener("DOMContentLoaded", function(){
+        document.getElementById("backBtn").addEventListener("click", ()=> window.location.href = "foundation.html");
+        document.getElementById("searchInput").addEventListener("input", render);
+      });
+      window.joinFoundation = async function(fid, fname, ownerId){
+        if(!currentUser) return;
+        try{
+          if(!currentUserProfile || currentUserProfile.role!=="donor"){
+            alert("Only donors can send join requests.");
+            return;
+          }
+          // Prevent duplicate request
+          const dupSnap = await db.collection("foundation_join_requests")
+            .where("foundationId","==",fid)
+            .where("donorId","==",currentUser.uid)
+            .get();
+          if(!dupSnap.empty){
+            alert("Join request already sent.");
+            return;
+          }
+          const donorName = currentUserProfile.name || currentUser.displayName || "Donor";
+          await db.collection("foundation_join_requests").add({
+            foundationId: fid,
+            foundationName: fname,
+            ownerId: ownerId,
+            donorId: currentUser.uid,
+            donorName: donorName,
+            status: "pending",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          alert("Join request sent successfully!");
+          loadFoundations();
+        }catch(e){
+          alert("Failed to send join request.");
+        }
+      };
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
+    <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </button>
+    <div class="brand" style="text-align:center;">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div style="width:32px; height:32px;"></div>
+  </nav>
+  <main class="container">
+    <div class="welcome" style="margin-bottom: 10px;">
+      <h1>Join a Foundation</h1>
+      <p class="muted">Search approved foundations and send a join request.</p>
+    </div>
+    <div class="search-bar">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input id="searchInput" class="search-input" type="text" placeholder="Search by foundation name...">
+    </div>
+    <section id="foundationsGrid" class="foundation-grid">
+      <div class="no-results">Loading foundations...</div>
+    </section>
+  </main>
+</body>
+</html>

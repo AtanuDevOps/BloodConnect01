@@ -48,6 +48,8 @@
           document.getElementById('fdDescription').textContent = d.description || "No description";
           var created = tsToDate(d.createdAt);
           document.getElementById('fdCreated').textContent = created ? created.toLocaleDateString() : "—";
+          loadMembersCount();
+          loadJoinRequests(user.uid, d.ownerId);
         } catch(e){
           document.getElementById('fdName').textContent = "Error loading Foundation";
         }
@@ -57,6 +59,69 @@
           window.location.href = 'foundation.html';
         });
       });
+      async function loadMembersCount(){
+        try{
+          var snap = await db.collection("foundation_members").where("foundationId","==",fid).get();
+          document.getElementById("membersCount").textContent = snap.size;
+        }catch(e){
+          document.getElementById("membersCount").textContent = "0";
+        }
+      }
+      async function loadJoinRequests(currentUid, ownerId){
+        try{
+          if(currentUid !== ownerId) return;
+          var snap = await db.collection("foundation_join_requests")
+            .where("foundationId","==",fid)
+            .where("ownerId","==",currentUid)
+            .where("status","==","pending")
+            .get();
+          var section = document.getElementById("joinRequestsSection");
+          var list = document.getElementById("joinRequestsList");
+          if(snap.empty){ section.style.display = "none"; return; }
+          section.style.display = "block";
+          list.innerHTML = snap.docs.map(function(doc){
+            var r = doc.data();
+            var dateStr = r.createdAt && r.createdAt.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleDateString() : "—";
+            return '<div class="placeholder-card" style="display:flex; align-items:center; justify-content:space-between;">'
+              + '<div><strong>'+ (r.donorName||"Donor") +'</strong><div class="muted-sm">Requested: '+ dateStr +'</div></div>'
+              + '<button class="action-btn" onclick="approveJoinRequest(\''+ doc.id +'\', \''+ (r.donorId||'') +'\', \''+ (r.donorName||'Donor') +'\')">Approve</button>'
+              + '</div>';
+          }).join("");
+        }catch(e){
+          // silent
+        }
+      }
+      window.approveJoinRequest = async function(reqId, donorId, donorName){
+        try{
+          await db.collection("foundation_join_requests").doc(reqId).update({ status: "approved" });
+          var dup = await db.collection("foundation_members")
+            .where("foundationId","==",fid)
+            .where("memberId","==",donorId)
+            .get();
+          if(dup.empty){
+            var fdName = document.getElementById('fdName').textContent || "Foundation";
+            await db.collection("foundation_members").add({
+              foundationId: fid,
+              foundationName: fdName,
+              memberId: donorId,
+              memberName: donorName,
+              joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+          loadMembersCount();
+          // reload pending list
+          var ownerIdText = null;
+          try {
+            var fdDoc = await db.collection("foundation_requests").doc(fid).get();
+            ownerIdText = fdDoc.exists ? (fdDoc.data().ownerId || null) : null;
+          } catch(e){}
+          var user = firebase.auth().currentUser;
+          loadJoinRequests(user && user.uid, ownerIdText);
+          alert("Join request approved.");
+        }catch(e){
+          alert("Failed to approve request.");
+        }
+      };
     })();
   </script>
 </head>
@@ -76,6 +141,7 @@
     <div class="welcome" style="margin-bottom: 10px;">
       <h1 id="fdName">Foundation</h1>
       <p id="fdLocation" class="muted">—</p>
+      <div class="muted-sm" style="margin-top:6px;"><i class="fa-solid fa-users"></i> Members: <span id="membersCount">0</span></div>
     </div>
 
     <section class="info-card">
@@ -97,6 +163,10 @@
         <div style="font-weight:700; margin-bottom:6px;">Admin Controls</div>
         <div class="muted-sm">Admin tools coming soon.</div>
       </div>
+    </section>
+    <section class="info-card" id="joinRequestsSection" style="display:none;">
+      <div style="font-weight:700; margin-bottom:6px;">Join Requests</div>
+      <div id="joinRequestsList" style="display:grid; gap:8px;"></div>
     </section>
   </main>
 </body>
