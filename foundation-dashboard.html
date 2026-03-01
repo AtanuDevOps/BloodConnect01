@@ -58,6 +58,12 @@
         document.getElementById('backBtn').addEventListener('click', function(){
           window.location.href = 'foundation.html';
         });
+        var card = document.getElementById('campaignPostsCard');
+        if (card) {
+          card.addEventListener('click', function(){
+            window.location.href = 'foundation-campaigns.html?foundationId=' + encodeURIComponent(fid || '');
+          });
+        }
       });
       async function loadMembersCount(){
         try{
@@ -151,7 +157,7 @@
     </section>
 
     <section class="grid-3">
-      <div class="placeholder-card">
+      <div class="placeholder-card" id="campaignPostsCard" style="cursor:pointer;">
         <div style="font-weight:700; margin-bottom:6px;">Campaign Posts</div>
         <div class="muted-sm">No campaigns yet.</div>
       </div>

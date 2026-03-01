@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Foundation Campaigns · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    .feed-card { padding:12px; border:1px solid var(--border); border-radius:12px; background:#fff; margin-bottom:12px; }
+    .feed-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .type-badge { font-size:12px; background:#fff0f2; color:#CE1126; padding:2px 8px; border-radius:12px; border:1px solid #ffd4da; }
+    .feed-image { width:100%; border-radius:8px; margin:8px 0; }
+    .reaction-bar { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    .reaction-btn { border:none; background:#f8f8f8; padding:6px 10px; border-radius:999px; cursor:pointer; font-size:12px; }
+    .reaction-btn:hover { background:#eee; }
+    .comment-box { display:flex; gap:8px; margin-top:8px; }
+    .comment-input { flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; }
+    .comment-list { display:grid; gap:6px; margin-top:8px; }
+    .comment-item { font-size:13px; background:#fafafa; border:1px solid var(--border); border-radius:8px; padding:8px; }
+    .hidden { display:none; }
+    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; }
+    .modal-content { width:90%; max-width:520px; background:#fff; border-radius:12px; padding:16px; }
+    .label-sm { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
+    .input-field, .select-field, .textarea-field { width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; }
+    .preview { width:100%; margin-top:8px; border-radius:8px; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script>
+    (function(){
+      function getParam(name) {
+        var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+        return m && decodeURIComponent(m[1].replace(/\+/g, ' '));
+      }
+      function escapeHtml(text){ if(!text) return ""; return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+      function tsToDate(ts) {
+        if (!ts) return null;
+        if (typeof ts.toMillis === "function") return new Date(ts.toMillis());
+        if (typeof ts.seconds === "number") return new Date(ts.seconds * 1000);
+        return null;
+      }
+      var fid = getParam('foundationId');
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      var db = firebase.firestore(app);
+      var storage = firebase.storage(app);
+      var foundationName = "Foundation";
+      var canPost = false;
+      var currentUser = null;
+      auth.onAuthStateChanged(async function(user){
+        if(!user){ window.location.href = "index.html"; return; }
+        currentUser = user;
+        if(!fid){ document.getElementById("pageTitle").textContent = "Invalid Foundation"; return; }
+        try {
+          var fdDoc = await db.collection("foundation_requests").doc(fid).get();
+          if(fdDoc.exists){
+            var d = fdDoc.data();
+            foundationName = d.name || "Foundation";
+            document.getElementById("pageTitle").textContent = "Foundation Campaigns";
+            var admins = Array.isArray(d.admins) ? d.admins : [];
+            canPost = (d.ownerId === user.uid) || admins.indexOf(user.uid) !== -1;
+            var btn = document.getElementById("startCampaignBtn");
+            if (btn) btn.style.display = canPost ? "inline-flex" : "none";
+          }
+        } catch(e){}
+        initFeed();
+      });
+      window.addEventListener("DOMContentLoaded", function(){
+        document.getElementById("backBtn").addEventListener("click", function(){
+          window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(fid||"");
+        });
+        var startBtn = document.getElementById("startCampaignBtn");
+        var modal = document.getElementById("campaignModal");
+        var closeModalBtn = document.getElementById("closeCampaignModal");
+        var imgFileEl = document.getElementById("campaignImage");
+        var previewImg = document.getElementById("previewImg");
+        if(startBtn){
+          startBtn.addEventListener("click", function(){ if(canPost) modal.style.display = "flex"; });
+        }
+        if(closeModalBtn){
+          closeModalBtn.addEventListener("click", function(){ modal.style.display = "none"; });
+        }
+        window.onclick = function(e) {
+          if (e.target === modal) modal.style.display = "none";
+        };
+        imgFileEl.addEventListener("change", function(){
+          var f = imgFileEl.files && imgFileEl.files[0];
+          if(f && f.type && f.type.startsWith("image/")){
+            var reader = new FileReader();
+            reader.onload = function(evt){ previewImg.src = evt.target.result; previewImg.classList.remove("hidden"); };
+            reader.readAsDataURL(f);
+          } else {
+            previewImg.src = "";
+            previewImg.classList.add("hidden");
+          }
+        });
+        document.getElementById("campaignForm").addEventListener("submit", postCampaign);
+      });
+      function initFeed(){
+        var feed = document.getElementById("campaignFeed");
+        db.collection("foundation_campaign_posts")
+          .where("foundationId","==",fid)
+          .orderBy("createdAt","desc")
+          .onSnapshot(function(snap){
+            if(snap.empty){ feed.innerHTML = '<div class="no-results">No campaigns yet.</div>'; return; }
+            var html = [];
+            snap.forEach(function(doc){
+              var p = doc.data();
+              var dt = tsToDate(p.createdAt);
+              var dateStr = dt ? dt.toLocaleString() : "Just now";
+              html.push(
+                '<div class="feed-card" id="post-'+ doc.id +'">'
+                + '<div class="feed-header">'
+                +   '<div><strong>'+ escapeHtml(p.foundationName||foundationName) +'</strong> <span class="type-badge">'+ escapeHtml(p.campaignType||"Campaign") +'</span></div>'
+                +   '<div class="muted-sm">'+ dateStr +'</div>'
+                + '</div>'
+                + (p.imageURL ? '<img class="feed-image" src="'+ escapeHtml(p.imageURL) +'" alt="campaign">' : '')
+                + '<div>'+ escapeHtml(p.caption||"") +'</div>'
+                + '<div class="reaction-bar">'
+                +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'like\')">👍 '+ (p.likeCount||0) +'</button>'
+                +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'love\')">❤️ '+ (p.loveCount||0) +'</button>'
+                +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'wow\')">😮 '+ (p.wowCount||0) +'</button>'
+                +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'angry\')">😡 '+ (p.angryCount||0) +'</button>'
+                + '</div>'
+                + '<div class="comment-box">'
+                +   '<input id="cmt-'+ doc.id +'" class="comment-input" type="text" maxlength="500" placeholder="Write a comment...">'
+                +   '<button class="action-btn" onclick="submitComment(\''+ doc.id +'\')">Post</button>'
+                + '</div>'
+                + '<div id="comments-'+ doc.id +'" class="comment-list"></div>'
+                + '</div>'
+              );
+              loadComments(doc.id);
+            });
+            feed.innerHTML = html.join("");
+          }, function(err){
+            feed.innerHTML = '<div class="no-results">Failed to load campaigns.</div>';
+          });
+      }
+      window.reactPost = async function(postId, type){
+        if(!currentUser) return;
+        try{
+          var rid = postId + '_' + currentUser.uid;
+          var rRef = db.collection("foundation_post_reactions").doc(rid);
+          var pRef = db.collection("foundation_campaign_posts").doc(postId);
+          await db.runTransaction(async function(tx){
+            var rSnap = await tx.get(rRef);
+            var pSnap = await tx.get(pRef);
+            if(!pSnap.exists) return;
+            var p = pSnap.data();
+            var prev = rSnap.exists ? rSnap.data().reactionType : null;
+            if(prev === type) return; // no change
+            // adjust counters
+            var updates = {};
+            function inc(field){ updates[field] = (p[field]||0) + 1; }
+            function dec(field){ updates[field] = Math.max(0, (p[field]||0) - 1); }
+            if(prev){
+              if(prev === "like") dec("likeCount");
+              else if(prev === "love") dec("loveCount");
+              else if(prev === "wow") dec("wowCount");
+              else if(prev === "angry") dec("angryCount");
+            }
+            if(type === "like") inc("likeCount");
+            else if(type === "love") inc("loveCount");
+            else if(type === "wow") inc("wowCount");
+            else if(type === "angry") inc("angryCount");
+            tx.update(pRef, updates);
+            tx.set(rRef, { postId: postId, userId: currentUser.uid, reactionType: type }, { merge: true });
+          });
+        } catch(e){
+          alert("Failed to react.");
+        }
+      };
+      window.submitComment = async function(postId){
+        if(!currentUser) return;
+        try{
+          var input = document.getElementById("cmt-"+postId);
+          var text = (input.value||"").trim();
+          if(!text) return;
+          var name = currentUser.displayName || "";
+          var pRef = db.collection("foundation_campaign_posts").doc(postId);
+          await db.collection("foundation_post_comments").add({
+            postId: postId,
+            userId: currentUser.uid,
+            userName: name,
+            commentText: text,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          await pRef.update({ commentCount: firebase.firestore.FieldValue.increment(1) });
+          input.value = "";
+          loadComments(postId);
+        }catch(e){
+          alert("Failed to comment.");
+        }
+      };
+      async function loadComments(postId){
+        try{
+          var listEl = document.getElementById("comments-"+postId);
+          var snap = await db.collection("foundation_post_comments")
+            .where("postId","==",postId)
+            .orderBy("createdAt","desc")
+            .limit(3)
+            .get();
+          if(snap.empty){ listEl.innerHTML = ""; return; }
+          listEl.innerHTML = snap.docs.map(function(d){
+            var c = d.data();
+            var dt = tsToDate(c.createdAt);
+            var dateStr = dt ? dt.toLocaleString() : "Just now";
+            return '<div class="comment-item"><strong>'+ escapeHtml(c.userName||"User") +'</strong> '
+              + '<span class="muted-sm" style="margin-left:6px;">'+ dateStr +'</span>'
+              + '<div>'+ escapeHtml(c.commentText||"") +'</div></div>';
+          }).join("");
+        }catch(e){
+          // ignore
+        }
+      }
+      async function postCampaign(e){
+        e.preventDefault();
+        if(!canPost){ alert("Only foundation admins can start campaigns."); return; }
+        var type = document.getElementById("campaignType").value;
+        var file = document.getElementById("campaignImage").files[0];
+        var caption = (document.getElementById("campaignCaption").value||"").trim();
+        if(!type || !file || !caption){ alert("Please fill all fields and select an image."); return; }
+        if(file.type && !file.type.startsWith("image/")){ alert("Please select an image file."); return; }
+        var btn = document.getElementById("postBtn");
+        btn.disabled = true; btn.textContent = "Posting...";
+        try{
+          var fdDoc = await db.collection("foundation_requests").doc(fid).get();
+          var fdName = fdDoc.exists ? (fdDoc.data().name || "Foundation") : "Foundation";
+          var postRef = db.collection("foundation_campaign_posts").doc();
+          var storageRef = storage.ref("foundation_campaigns/"+ fid +"/"+ postRef.id +".jpg");
+          await storageRef.put(file);
+          var url = await storageRef.getDownloadURL();
+          await postRef.set({
+            postId: postRef.id,
+            foundationId: fid,
+            foundationName: fdName,
+            imageURL: url,
+            caption: caption,
+            campaignType: type,
+            createdBy: currentUser.uid,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            likeCount: 0,
+            loveCount: 0,
+            wowCount: 0,
+            angryCount: 0,
+            commentCount: 0
+          });
+          document.getElementById("campaignModal").style.display = "none";
+          document.getElementById("campaignForm").reset();
+          document.getElementById("previewImg").classList.add("hidden");
+          alert("Campaign posted successfully!");
+        }catch(e){
+          alert("Failed to post campaign.");
+        } finally {
+          btn.disabled = false; btn.textContent = "Post";
+        }
+      }
+    })();
+  </script>
+</head>
+<body>
+  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
+    <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </button>
+    <div class="brand" style="text-align:center;">
+      <i class="fa-solid fa-droplet"></i>
+      <span>BloodConnect</span>
+    </div>
+    <div>
+      <button id="startCampaignBtn" class="action-btn" style="display:none;"><i class="fa-solid fa-bullhorn"></i> Start Campaign</button>
+    </div>
+  </nav>
+  <main class="container">
+    <div class="welcome" style="margin-bottom: 10px;">
+      <h1 id="pageTitle">Foundation Campaigns</h1>
+      <p class="muted">Campaign feed and updates</p>
+    </div>
+    <section id="campaignFeed">
+      <div class="no-results">Loading campaigns...</div>
+    </section>
+  </main>
+
+  <div id="campaignModal" class="modal">
+    <div class="modal-content">
+      <h2 style="margin-bottom:10px;">Start Campaign</h2>
+      <form id="campaignForm" style="display:grid; gap:12px;">
+        <div>
+          <label class="label-sm">Campaign Type</label>
+          <select id="campaignType" class="select-field" required>
+            <option value="">Select Type</option>
+            <option>Blood Donation Drive</option>
+            <option>Emergency Appeal</option>
+            <option>Awareness Campaign</option>
+            <option>Volunteer Recruitment</option>
+          </select>
+        </div>
+        <div>
+          <label class="label-sm">Upload Image</label>
+          <input id="campaignImage" type="file" accept="image/*" class="input-field" required>
+          <img id="previewImg" class="preview hidden" alt="preview">
+        </div>
+        <div>
+          <label class="label-sm">Caption (max 500 chars)</label>
+          <textarea id="campaignCaption" class="textarea-field" rows="4" maxlength="500" required></textarea>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button type="button" id="closeCampaignModal" class="action-btn secondary">Cancel</button>
+          <button id="postBtn" type="submit" class="action-btn"><i class="fa-solid fa-paper-plane"></i> Post</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
