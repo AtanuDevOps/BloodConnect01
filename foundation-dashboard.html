@@ -50,6 +50,7 @@
           document.getElementById('fdCreated').textContent = created ? created.toLocaleDateString() : "—";
           loadMembersCount();
           loadJoinRequests(user.uid, d.ownerId);
+          startChatUnreadListener(user.uid);
         } catch(e){
           document.getElementById('fdName').textContent = "Error loading Foundation";
         }
@@ -62,6 +63,12 @@
         if (card) {
           card.addEventListener('click', function(){
             window.location.href = 'foundation-campaigns.html?foundationId=' + encodeURIComponent(fid || '');
+          });
+        }
+        var chatBtn = document.getElementById('chatBtn');
+        if (chatBtn) {
+          chatBtn.addEventListener('click', function(){
+            window.location.href = 'foundation-chat.html?foundationId=' + encodeURIComponent(fid || '');
           });
         }
       });
@@ -128,6 +135,31 @@
           alert("Failed to approve request.");
         }
       };
+      function startChatUnreadListener(uid){
+        try{
+          db.collection("foundation_chats")
+            .where("foundationId","==",fid)
+            .orderBy("createdAt","asc")
+            .onSnapshot(function(snap){
+              var count = 0;
+              snap.forEach(function(doc){
+                var msg = doc.data();
+                var readBy = Array.isArray(msg.readBy) ? msg.readBy : [];
+                if (readBy.indexOf(uid) === -1) count++;
+              });
+              var badge = document.getElementById("chatBadge");
+              if (!badge) return;
+              if (count <= 0) {
+                badge.style.display = "none";
+              } else {
+                badge.style.display = "inline-block";
+                badge.textContent = count > 9 ? "9+" : String(count);
+              }
+            }, function(err){
+              // silent on error
+            });
+        }catch(e){}
+      }
     })();
   </script>
 </head>
@@ -140,7 +172,12 @@
       <i class="fa-solid fa-droplet"></i>
       <span>BloodConnect</span>
     </div>
-    <div style="width:32px; height:32px;"></div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button id="chatBtn" class="action-btn" style="position:relative; padding:6px 10px; font-size:12px; border-radius:999px;">
+        <i class="fa-solid fa-message"></i> Chat
+        <span id="chatBadge" style="display:none; position:absolute; top:-6px; right:-6px; background:#CE1126; color:#fff; border-radius:999px; font-size:11px; padding:2px 6px;">0</span>
+      </button>
+    </div>
   </nav>
 
   <main class="container">

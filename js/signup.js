@@ -6,14 +6,12 @@
   const auth = firebase.auth(app);
   const db = firebase.firestore(app);
 
-  const btnUser = document.getElementById("btnUser");
-  const btnDonor = document.getElementById("btnDonor");
   const bloodGroupWrap = document.getElementById("bloodGroupWrap");
   const bloodGroupInput = document.getElementById("bloodGroup");
   const form = document.getElementById("signupForm");
   const errorEl = document.getElementById("error");
 
-  let selectedRole = "user";
+  let selectedRole = "donor";
 
   try {
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -28,21 +26,8 @@
     }
   });
 
-  btnUser.addEventListener("click", function () {
-    selectedRole = "user";
-    btnUser.classList.add("active");
-    btnDonor.classList.remove("active");
-    bloodGroupWrap.classList.remove("show");
-    bloodGroupInput.required = false;
-  });
-
-  btnDonor.addEventListener("click", function () {
-    selectedRole = "donor";
-    btnDonor.classList.add("active");
-    btnUser.classList.remove("active");
-    bloodGroupWrap.classList.add("show");
-    bloodGroupInput.required = true;
-  });
+  bloodGroupWrap.classList.add("show");
+  bloodGroupInput.required = true;
 
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -54,7 +39,7 @@
     const password = document.getElementById("password").value;
     const bloodGroup = bloodGroupInput.value.trim();
 
-    if (selectedRole === "donor" && !bloodGroup) {
+    if (!bloodGroup) {
       errorEl.textContent = "Blood group is required.";
       console.warn("[Signup] Missing blood group for donor role");
       return;
@@ -72,13 +57,11 @@
       const userData = {
         name: name,
         phone: phone,
-        role: selectedRole,
+        role: "donor",
         profileLocked: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (selectedRole === "donor") {
-        userData.bloodGroup = bloodGroup;
-      }
+      userData.bloodGroup = bloodGroup;
 
       console.log("[Signup] Writing Firestore users doc for uid:", uid, userData);
       await db.collection("users").doc(uid).set(userData);

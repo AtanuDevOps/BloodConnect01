@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Foundation Chat · BloodConnect</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./dashboard.css">
+  <style>
+    .chat-header { display:flex; align-items:center; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border); }
+    .chat-title { display:flex; flex-direction:column; align-items:center; }
+    .chat-main { display:flex; flex-direction:column; height:calc(100vh - 120px); }
+    .messages { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
+    .msg { max-width:70%; padding:8px 10px; border-radius:12px; font-size:14px; line-height:1.35; }
+    .msg.me { align-self:flex-end; background:#fff0f2; color:#CE1126; border:1px solid #ffd4da; }
+    .msg.other { align-self:flex-start; background:#f5f5f5; color:#333; border:1px solid var(--border); }
+    .msg-meta { font-size:11px; color:var(--muted); margin-top:4px; }
+    .sender { font-weight:600; margin-bottom:2px; }
+    .chat-input { display:flex; gap:8px; padding:10px; border-top:1px solid var(--border); }
+    .chat-input input { flex:1; padding:10px; border:1px solid var(--border); border-radius:999px; }
+    .chat-input button { padding:8px 12px; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="./firebase-config.js"></script>
+  <script>
+    (function(){
+      function getParam(name) {
+        var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+        return m && decodeURIComponent(m[1].replace(/\+/g, ' '));
+      }
+      function tsToDate(ts) {
+        if (!ts) return null;
+        if (typeof ts.toMillis === "function") return new Date(ts.toMillis());
+        if (typeof ts.seconds === "number") return new Date(ts.seconds * 1000);
+        return null;
+      }
+      function fmtTime(d) {
+        try {
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch(e) { return ""; }
+      }
+      var fid = getParam('foundationId');
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      var db = firebase.firestore(app);
+      var currentUser = null, currentUserProfile = null, foundationName = "Foundation";
+      var messagesEl, inputEl, sendBtn;
+      auth.onAuthStateChanged(async function(user){
+        if(!user){ window.location.href = "index.html"; return; }
+        currentUser = user;
+        try {
+          var up = await db.collection("users").doc(user.uid).get();
+          if (up.exists) currentUserProfile = up.data();
+        } catch(e){}
+        if(!fid){ document.getElementById("fdName").textContent = "Invalid Foundation"; return; }
+        try {
+          var fdDoc = await db.collection("foundation_requests").doc(fid).get();
+          if(!fdDoc.exists){ document.getElementById("fdName").textContent = "Foundation Not Found"; return; }
+          var d = fdDoc.data();
+          foundationName = d.name || "Foundation";
+          document.getElementById("fdName").textContent = foundationName;
+          var admins = Array.isArray(d.admins) ? d.admins : [];
+          var isOwner = d.ownerId === user.uid;
+          var isAdmin = admins.indexOf(user.uid) !== -1;
+          var isMember = false;
+          try {
+            var memSnap = await db.collection("foundation_members")
+              .where("foundationId","==",fid)
+              .where("memberId","==",user.uid)
+              .get();
+            isMember = !memSnap.empty;
+          } catch(e){}
+          if (!(isOwner || isAdmin || isMember)) {
+            alert("Only foundation members can access chat.");
+            window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(fid);
+            return;
+          }
+          startChat();
+        } catch(e){
+          document.getElementById("fdName").textContent = "Error";
+        }
+      });
+      window.addEventListener("DOMContentLoaded", function(){
+        messagesEl = document.getElementById("messagesList");
+        inputEl = document.getElementById("chatInput");
+        sendBtn = document.getElementById("sendBtn");
+        document.getElementById("backBtn").addEventListener("click", function(){
+          window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(fid||"");
+        });
+        inputEl.focus();
+        inputEl.addEventListener("input", function(){
+          sendBtn.disabled = !(inputEl.value || "").trim();
+        });
+        inputEl.addEventListener("keypress", function(e){
+          if(e.key === "Enter" && !sendBtn.disabled) sendMessage();
+        });
+        sendBtn.addEventListener("click", sendMessage);
+      });
+      function startChat(){
+        db.collection("foundation_chats")
+          .where("foundationId","==",fid)
+          .orderBy("createdAt","asc")
+          .onSnapshot(function(snap){
+            var html = [];
+            var unreadIds = [];
+            snap.forEach(function(doc){
+              var m = doc.data();
+              if (!m || !m.createdAt) return; // ignore missing timestamp
+              var mine = m.senderId === (currentUser && currentUser.uid);
+              var d = tsToDate(m.createdAt);
+              if (!d) return;
+              var timeStr = fmtTime(d);
+              var readBy = Array.isArray(m.readBy) ? m.readBy : [];
+              if (readBy.indexOf(currentUser.uid) === -1) unreadIds.push(doc.id);
+              html.push(
+                '<div class="msg '+ (mine?'me':'other') +'">'
+                + (mine ? '' : '<div class="sender">'+ (m.senderName||"User") +'</div>')
+                + '<div>'+ (m.messageText||"") +'</div>'
+                + '<div class="msg-meta">'+ timeStr +'</div>'
+                + '</div>'
+              );
+            });
+            messagesEl.innerHTML = html.length ? html.join("") : '<div class="no-results">No messages yet.</div>';
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            markRead(unreadIds);
+          }, function(err){
+            console.error("Chat load error:", err);
+          });
+      }
+      async function markRead(ids){
+        try{
+          var uid = currentUser && currentUser.uid;
+          if(!uid || !ids || ids.length===0) return;
+          var batchCount = 0;
+          for (var i=0; i<ids.length && batchCount<100; i++) {
+            var ref = db.collection("foundation_chats").doc(ids[i]);
+            await ref.update({ readBy: firebase.firestore.FieldValue.arrayUnion(uid) });
+            batchCount++;
+          }
+        }catch(e){}
+      }
+      async function sendMessage(){
+        try{
+          var text = (inputEl.value||"").trim();
+          if(!text) return;
+          sendBtn.disabled = true;
+          await db.collection("foundation_chats").add({
+            foundationId: fid,
+            senderId: currentUser.uid,
+            senderName: (currentUserProfile && currentUserProfile.name) || currentUser.displayName || "User",
+            messageText: text,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            readBy: [currentUser.uid]
+          });
+          inputEl.value = "";
+          sendBtn.disabled = true;
+          inputEl.focus();
+        }catch(e){
+          alert("Failed to send message.");
+        } finally {
+          sendBtn.disabled = !(inputEl.value || "").trim();
+        }
+      }
+    })();
+  </script>
+</head>
+<body>
+  <nav class="chat-header">
+    <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </button>
+    <div class="chat-title">
+      <div id="fdName" style="font-weight:700;">Foundation</div>
+      <div class="muted" style="font-size:12px;">Group Chat</div>
+    </div>
+    <div style="width:32px; height:32px;"></div>
+  </nav>
+  <main class="chat-main">
+    <div id="messagesList" class="messages"></div>
+    <div class="chat-input">
+      <input id="chatInput" type="text" placeholder="Type a message..." maxlength="500">
+      <button id="sendBtn" class="action-btn" disabled><i class="fa-solid fa-paper-plane"></i></button>
+    </div>
+  </main>
+</body>
+</html>

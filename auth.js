@@ -5,15 +5,13 @@
   var auth = firebase.auth(app);
   var db = firebase.firestore(app);
 
-  var btnUser = document.getElementById("btnUser");
-  var btnDonor = document.getElementById("btnDonor");
   var btnCreate = document.getElementById("btnCreate");
   var btnSignIn = document.getElementById("btnSignIn");
   var bloodGroupWrap = document.getElementById("bloodGroupWrap");
   var bloodGroupInput = document.getElementById("bloodGroup");
   var errorEl = document.getElementById("error");
 
-  var selectedRole = "user";
+  var selectedRole = "donor";
 
   try {
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -28,23 +26,8 @@
     }
   });
 
-  function setRole(role) {
-    selectedRole = role;
-    if (role === "donor") {
-      btnDonor.classList.add("active");
-      btnUser.classList.remove("active");
-      bloodGroupWrap.classList.add("show");
-      bloodGroupInput.required = true;
-    } else {
-      btnUser.classList.add("active");
-      btnDonor.classList.remove("active");
-      bloodGroupWrap.classList.remove("show");
-      bloodGroupInput.required = false;
-    }
-  }
-
-  btnUser && btnUser.addEventListener("click", function () { setRole("user"); });
-  btnDonor && btnDonor.addEventListener("click", function () { setRole("donor"); });
+  bloodGroupWrap && bloodGroupWrap.classList.add("show");
+  if (bloodGroupInput) bloodGroupInput.required = true;
 
   async function createAccount() {
     errorEl.textContent = "";
@@ -53,9 +36,9 @@
     var password = document.getElementById("password").value;
     var bloodGroup = (bloodGroupInput.value || "").trim();
 
-    if (selectedRole === "donor" && !bloodGroup) {
+    if (!bloodGroup) {
       errorEl.textContent = "Blood group is required.";
-      console.warn("[Auth] Missing blood group for donor role");
+      console.warn("[Auth] Missing blood group for donor account");
       return;
     }
 
@@ -71,21 +54,17 @@
       var data = {
         name: name,
         email: email,
-        role: selectedRole,
+        role: "donor",
         profileLocked: false,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (selectedRole === "donor") data.bloodGroup = bloodGroup;
+      data.bloodGroup = bloodGroup;
 
       console.log("[Auth] Writing Firestore users doc for uid:", uid, data);
       await db.collection("users").doc(uid).set(data);
       console.log("[Auth] Account created and profile saved");
 
-      if (selectedRole === "donor") {
-        window.location.href = "donor-dashboard.html";
-      } else {
-        window.location.href = "user-dashboard.html";
-      }
+      window.location.href = "donor-dashboard.html";
     } catch (err) {
       console.error("[Auth] Create account error:", err);
       errorEl.textContent = err && err.message ? err.message : "Signup failed";

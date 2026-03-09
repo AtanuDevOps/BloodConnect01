@@ -46,8 +46,7 @@
     if (profileLink) {
       profileLink.addEventListener("click", () => {
         if (!currentUserProfile) return;
-        if (currentUserProfile.role === "donor") window.location.href = "donor-dashboard.html";
-        else window.location.href = "user-dashboard.html";
+        window.location.href = "donor-dashboard.html";
       });
     }
     if (foundationBtn) {

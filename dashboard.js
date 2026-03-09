@@ -24,7 +24,7 @@
           var nameEl = document.getElementById("userName");
           var roleEl = document.getElementById("userRole");
           if (nameEl) nameEl.textContent = window.currentUserProfile.name || user.displayName || "Unknown";
-          if (roleEl) roleEl.textContent = window.currentUserProfile.role || "user";
+          if (roleEl) roleEl.textContent = window.currentUserProfile.role || "donor";
 
           // Update extra donor info if elements exist
           var displayBloodGroup = document.getElementById("displayBloodGroup");

@@ -47,7 +47,7 @@
       var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
       var auth = firebase.auth(app);
       var db = firebase.firestore(app);
-      var storage = firebase.storage(app);
+      var storage = firebase.storage();
       var foundationName = "Foundation";
       var canPost = false;
       var currentUser = null;
@@ -232,7 +232,10 @@
           var fdName = fdDoc.exists ? (fdDoc.data().name || "Foundation") : "Foundation";
           var postRef = db.collection("foundation_campaign_posts").doc();
           var storageRef = storage.ref("foundation_campaigns/"+ fid +"/"+ postRef.id +".jpg");
-          await storageRef.put(file);
+          var metadata = { contentType: file.type || "image/jpeg" };
+          await new Promise(function(resolve, reject){
+            storageRef.put(file, metadata).then(resolve).catch(reject);
+          });
           var url = await storageRef.getDownloadURL();
           await postRef.set({
             postId: postRef.id,
@@ -254,6 +257,7 @@
           document.getElementById("previewImg").classList.add("hidden");
           alert("Campaign posted successfully!");
         }catch(e){
+          console.error("Campaign post failed:", e);
           alert("Failed to post campaign.");
         } finally {
           btn.disabled = false; btn.textContent = "Post";
