@@ -97,68 +97,46 @@
   function renderRequests(requests) {
     feedContainer.innerHTML = requests.map(req => {
       const isMyRequest = req.createdBy === currentUser.uid;
-      const isDonor = currentUserProfile.role === "donor";
+      const isDonor = currentUserProfile && currentUserProfile.role === "donor";
       const responses = req.responses || [];
-      const responseCount = responses.length;
+      const alreadyResponded = responses.some(r => r.donorId === currentUser.uid);
       
       let actionBtn = "";
       if (isDonor && !isMyRequest) {
-        const alreadyResponded = responses.some(r => r.donorId === currentUser.uid);
         if (alreadyResponded) {
-          actionBtn = `<button class="action-btn secondary" disabled style="opacity:0.7"><i class="fa-solid fa-check"></i> Responded</button>`;
+          actionBtn = `<button class="modern-accept-btn" disabled>Accepted</button>`;
         } else {
-          actionBtn = `<button onclick="openResponseModal('${req.id}')" class="action-btn"><i class="fa-solid fa-hand-holding-heart"></i> Respond</button>`;
+          actionBtn = `<button onclick="openResponseModal('${req.id}')" class="modern-accept-btn">Accept</button>`;
         }
       } else if (isMyRequest) {
-         actionBtn = `<span class="my-req-badge">My Request</span>`;
+         actionBtn = `<button class="modern-accept-btn" style="background:#666;" disabled>My Request</button>`;
       }
 
-      // Format Date
-      const date = req.createdAt ? new Date(req.createdAt.seconds * 1000).toLocaleDateString() : "Just now";
-
-      // Responses Section (Visible to Creator or if user has responded?) 
-      // User requirement: "For the user/donor who created the request... Show list of donor responses"
-      let responsesHtml = "";
-      if (isMyRequest && responseCount > 0) {
-        responsesHtml = `
-          <div class="responses-section">
-            <div class="response-header"><i class="fa-solid fa-bell"></i> ${responseCount} Donor Response${responseCount > 1 ? 's' : ''}</div>
-            ${responses.map(r => `
-              <div class="response-item">
-                <div class="response-avatar" style="background:${r.donorColor || '#CE1126'}">${r.donorName.charAt(0)}</div>
-                <div>
-                  <strong>${escapeHtml(r.donorName)}</strong> <span class="blood-tag-sm">${r.donorBloodGroup}</span>
-                  <div class="response-msg">${escapeHtml(r.message)}</div>
-                  <div class="response-time">${new Date(r.respondedAt.seconds * 1000).toLocaleDateString()}</div>
-                </div>
-              </div>
-            `).join("")}
-          </div>
-        `;
+      // Format Date/Time (HH:MM AM/PM)
+      let timeStr = "Just now";
+      if (req.createdAt) {
+        const date = new Date(req.createdAt.seconds * 1000);
+        timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
 
       return `
-        <div class="request-card">
-          <div class="req-header">
-            <div>
-              <h3 class="req-patient">${escapeHtml(req.patientName)} <span class="age-badge">${req.patientAge} yrs</span></h3>
-              <div class="req-meta">
-                <span><i class="fa-solid fa-hospital"></i> ${escapeHtml(req.hospitalName)}</span>
-                <span>• ${date}</span>
-              </div>
+        <div class="modern-req-card">
+          <div class="modern-req-top">
+            <div class="modern-avatar"></div>
+            <div class="modern-info">
+              <div class="modern-name">${req.patientName || "A.H SIFAT"}</div>
+              <div class="modern-blood-needed">${req.bloodGroup} Blood Needed</div>
             </div>
-            <div class="blood-badge-lg">${req.bloodGroup}</div>
-          </div>
-          
-          <p class="req-desc">${escapeHtml(req.description)}</p>
-          
-          <div class="req-footer">
-            <div class="req-status">
-              ${responseCount > 0 ? `<span class="status-active">${responseCount} Responses</span>` : '<span class="status-waiting">Waiting for donors</span>'}
+            <div class="modern-time-badge">
+              <i class="fa-regular fa-clock"></i>
+              <span>${timeStr}</span>
             </div>
-            ${actionBtn}
           </div>
-          ${responsesHtml}
+          <div class="modern-hospital">
+            <i class="fa-solid fa-hospital"></i>
+            <span>${req.hospitalName}</span>
+          </div>
+          ${actionBtn}
         </div>
       `;
     }).join("");

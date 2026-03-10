@@ -7,39 +7,24 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="./dashboard.css">
 </head>
-<body>
-  <!-- Navbar -->
-  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
-    <div class="nav-left" id="profileLink" style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-      <div style="display:flex; flex-direction:column; align-items:center;">
-        <div class="avatar-circle" id="navProfile" style="width:32px; height:32px; font-size:14px;"></div>
-        <div style="font-size:11px; color:var(--muted); line-height:1; margin-top:4px;">Profile</div>
-      </div>
+<body class="home-page">
+  <div class="container" style="padding-top: 40px;">
+    <div style="text-align: center; margin-bottom: 30px;">
+      <h1 style="color: var(--primary); font-weight: 700; margin: 0; font-size: 32px;">BloodConnect</h1>
     </div>
-    <div class="brand" style="text-align:center;">
-      <i class="fa-solid fa-droplet"></i>
-      <span>BloodConnect</span>
-    </div>
-    <div class="nav-right" style="display:flex; align-items:center; gap:10px;">
-      <button id="foundationBtn" class="action-btn" style="padding:6px 10px; font-size:12px; border-radius:999px;">
-        <i class="fa-solid fa-people-group"></i> Foundation
-      </button>
-    </div>
-  </nav>
 
-  <div class="container">
-    <div class="welcome" style="display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <h1>Blood Requests</h1>
-        <p class="muted">Recent blood needs from the community</p>
-      </div>
-      <button id="makeRequestBtn" class="action-btn">
-        <i class="fa-solid fa-plus"></i> Make Request
+    <div style="display: flex; gap: 12px; margin-bottom: 30px; align-items: stretch;">
+      <button id="makeRequestBtn" class="action-btn" style="flex: 1; border-radius: 12px; padding: 16px; font-size: 18px; justify-content: flex-start; box-shadow: 0 4px 15px rgba(206,17,38,0.3);">
+        <i class="fa-solid fa-plus"></i>
+        <span>Make blood request</span>
+      </button>
+      <button onclick="window.location.href='find-donors.html'" class="action-btn secondary" style="width: 54px; border-radius: 12px; border-color: var(--border); padding: 0; display: flex; align-items: center; justify-content: center; background: #fff;">
+        <i class="fa-solid fa-magnifying-glass" style="color: #333; font-size: 20px;"></i>
       </button>
     </div>
 
     <!-- Requests Feed -->
-    <div id="requestsFeed" class="requests-grid">
+    <div id="requestsFeed">
       <div class="no-results">Loading requests...</div>
     </div>
   </div>

@@ -300,6 +300,111 @@ body {
   border-radius: 4px;
 }
 
+/* --------------------
+   Modern Request Cards (Screenshot Match)
+   -------------------- */
+.modern-req-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.modern-req-top {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.modern-avatar {
+  width: 50px;
+  height: 50px;
+  background: #333;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.modern-info {
+  flex: 1;
+}
+
+.modern-name {
+  font-weight: 700;
+  font-size: 16px;
+  margin: 0;
+  color: #000;
+  text-transform: uppercase;
+}
+
+.modern-blood-needed {
+  font-size: 14px;
+  color: #333;
+  margin-top: 2px;
+}
+
+.modern-time-badge {
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #333;
+  white-space: nowrap;
+}
+
+.modern-hospital {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.modern-hospital i {
+  font-size: 16px;
+}
+
+.modern-accept-btn {
+  align-self: flex-end;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 30px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 4px 10px rgba(206,17,38,0.2);
+  transition: transform 0.2s;
+}
+
+.modern-accept-btn:hover {
+  transform: translateY(-2px);
+  background: var(--primary-dark);
+}
+
+.modern-accept-btn:disabled {
+  background: #ccc;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Decorative Background */
+body.home-page {
+  background-image: radial-gradient(circle at 100% 10%, rgba(206,17,38,0.05) 0%, transparent 40%),
+                    radial-gradient(circle at 100% 40%, rgba(206,17,38,0.08) 0%, transparent 30%);
+  background-attachment: fixed;
+}
+
 /* Bottom Navigation Bar */
 .bottom-nav {
   position: fixed;
