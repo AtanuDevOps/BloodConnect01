@@ -21,7 +21,7 @@
         if (snap.exists) {
           window.currentUserProfile = snap.data();
           console.log("[Dashboard] Loaded profile:", window.currentUserProfile);
-          var nameEl = document.getElementById("userName");
+          var nameEl = document.getElementById("userName") || document.getElementById("userName_welcome");
           var roleEl = document.getElementById("userRole");
           if (nameEl) nameEl.textContent = window.currentUserProfile.name || user.displayName || "Unknown";
           if (roleEl) roleEl.textContent = window.currentUserProfile.role || "donor";
@@ -35,10 +35,16 @@
           if (displayBloodGroup) displayBloodGroup.textContent = window.currentUserProfile.bloodGroup || "Not set";
           if (displayLocation) displayLocation.textContent = window.currentUserProfile.location || "Not set";
           if (displayPhone) displayPhone.textContent = window.currentUserProfile.phone || "Not set";
-          if (displayLockStatus) {
-            displayLockStatus.textContent = window.currentUserProfile.profileLocked ? "Locked 🔒" : "Public 🔓";
-            displayLockStatus.style.color = window.currentUserProfile.profileLocked ? "#CE1126" : "green";
-          }
+          
+          // New Stats
+          var lifeSavedEl = document.getElementById("lifeSavedCount");
+          if (lifeSavedEl) lifeSavedEl.textContent = window.currentUserProfile.donationCount || 0;
+
+          // Switches
+          var availableToggle = document.getElementById("availableToggle");
+          var lockProfileToggle = document.getElementById("lockProfileToggle");
+          if (availableToggle) availableToggle.checked = window.currentUserProfile.available !== false;
+          if (lockProfileToggle) lockProfileToggle.checked = !!window.currentUserProfile.profileLocked;
 
           // Render Avatar
           var avatarEl = document.getElementById("dashboardAvatar");
@@ -298,52 +304,108 @@
   }
 
   function updateDonationStatusUI() {
-    var el = document.getElementById("lastDonationStatValue");
-    var btn = document.getElementById("donationStatusBtn");
-    if (!el) return;
+    var labelEl = document.getElementById("nextDonationLabel");
+    var dateEl = document.getElementById("nextDonationDate");
+    var cardEl = document.getElementById("donationStatusCard");
+    
+    if (!labelEl || !dateEl) return;
+    
     var lastMs = tsMillis(window.currentUserProfile && window.currentUserProfile.lastDonationDate);
     var endMs = tsMillis(window.currentUserProfile && window.currentUserProfile.donationCooldownEnd);
     var now = Date.now();
-    if (lastMs) {
-      var days = Math.max(0, Math.floor((now - lastMs) / 86400000));
-      var nextDate = new Date(endMs || (lastMs + 90 * 86400000));
-      var nextStr = nextDate.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
-      el.innerHTML = "You donated blood " + days + " days ago<br>Next eligible date: " + nextStr;
+    
+    var cooldownActive = !!(endMs && now <= endMs);
+    
+    if (cooldownActive) {
+      var nextDate = new Date(endMs);
+      var day = nextDate.getDate();
+      var month = nextDate.toLocaleString('default', { month: 'short' });
+      labelEl.textContent = "Next Donation";
+      dateEl.textContent = day + " " + month;
+      cardEl.classList.add("cooldown");
     } else {
-      el.textContent = "No donation record yet";
-    }
-    var active = !!(endMs && now <= endMs);
-    if (btn) {
-      btn.disabled = active;
-      btn.title = active ? "You can update donation status again after cooldown ends." : "";
+      labelEl.textContent = "Update";
+      dateEl.textContent = "Donation Status";
+      cardEl.classList.remove("cooldown");
     }
   }
 
-  var donationBtn = document.getElementById("donationStatusBtn");
-  if (donationBtn) {
-    donationBtn.addEventListener("click", async function () {
+  // Handle Donation Update via Card Click
+  var donationCard = document.getElementById("donationStatusCard");
+  if (donationCard) {
+    donationCard.addEventListener("click", async function () {
       var user = auth.currentUser;
       if (!user) return;
+      
+      var endMs = tsMillis(window.currentUserProfile && window.currentUserProfile.donationCooldownEnd);
+      if (endMs && Date.now() <= endMs) {
+        alert("You are on cooldown. You can donate again after the specified date.");
+        return;
+      }
+
+      if (!confirm("Did you donate blood today? This will start your 3-month cooldown.")) return;
+
       try {
-        donationBtn.disabled = true;
         var nowMs = Date.now();
         var endTs = firebase.firestore.Timestamp.fromMillis(nowMs + 90 * 86400000);
+        var newCount = (window.currentUserProfile.donationCount || 0) + 1;
+        
         await db.collection("users").doc(user.uid).update({
           lastDonationDate: firebase.firestore.FieldValue.serverTimestamp(),
-          donationCooldownEnd: endTs
+          donationCooldownEnd: endTs,
+          donationCount: newCount
         });
-        var snap = await db.collection("users").doc(user.uid).get();
-        if (snap.exists) {
-          window.currentUserProfile = Object.assign({}, window.currentUserProfile, snap.data());
-        }
+        
+        // Refresh local data
+        window.currentUserProfile.lastDonationDate = firebase.firestore.Timestamp.now();
+        window.currentUserProfile.donationCooldownEnd = endTs;
+        window.currentUserProfile.donationCount = newCount;
+        
+        var lifeSavedEl = document.getElementById("lifeSavedCount");
+        if (lifeSavedEl) lifeSavedEl.textContent = newCount;
+        
         updateDonationStatusUI();
-        alert("Donation recorded successfully. You will be available again after 3 months.");
+        alert("Donation recorded! Thank you for saving a life.");
       } catch (e) {
         console.error(e);
         alert("Failed to record donation.");
-      } finally {
-        updateDonationStatusUI();
       }
+    });
+  }
+
+  // Handle Switches
+  var availableToggle = document.getElementById("availableToggle");
+  if (availableToggle) {
+    availableToggle.addEventListener("change", async function() {
+      var user = auth.currentUser;
+      if(!user) return;
+      try {
+        await db.collection("users").doc(user.uid).update({ available: this.checked });
+        window.currentUserProfile.available = this.checked;
+      } catch(e) { console.error(e); }
+    });
+  }
+
+  var lockProfileToggle = document.getElementById("lockProfileToggle");
+  if (lockProfileToggle) {
+    lockProfileToggle.addEventListener("change", async function() {
+      var user = auth.currentUser;
+      if(!user) return;
+      try {
+        await db.collection("users").doc(user.uid).update({ profileLocked: this.checked });
+        window.currentUserProfile.profileLocked = this.checked;
+      } catch(e) { console.error(e); }
+    });
+  }
+
+  // Handle Contact Details Toggle
+  var contactDetailsBtn = document.getElementById("contactDetailsBtn");
+  var contactDetailsSection = document.getElementById("contactDetailsSection");
+  if (contactDetailsBtn && contactDetailsSection) {
+    contactDetailsBtn.addEventListener("click", function() {
+      var isHidden = contactDetailsSection.style.display === "none";
+      contactDetailsSection.style.display = isHidden ? "block" : "none";
+      this.querySelector("i").className = isHidden ? "fa-solid fa-chevron-down" : "fa-solid fa-chevron-right";
     });
   }
 

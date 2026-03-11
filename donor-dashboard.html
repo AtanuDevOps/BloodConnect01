@@ -7,60 +7,110 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="" crossorigin="anonymous">
   <link rel="stylesheet" href="./dashboard.css">
 </head>
-<body>
-  <header class="navbar">
-    <div class="brand">
-      <i class="fa-solid fa-droplet"></i>
-      <span>BloodConnect</span>
+<body class="profile-page">
+  <div class="profile-header">
+    <div class="profile-header-top">
+      <h1 class="app-title">BloodConnect</h1>
+      <button id="editProfileBtn" class="text-btn top-right">Edit Profile</button>
     </div>
-    <div class="nav-right">
-      <span class="muted">Signed in as</span>
-      <strong id="userName">...</strong>
-      <button id="logoutBtn" class="logout-btn" type="button">Logout</button>
-    </div>
-  </header>
-
-  <main class="container">
-    <section class="card welcome">
-      <div style="display:flex; flex-direction:column; align-items:center; text-align:center;">
-        <!-- Avatar Section -->
-        <div id="dashboardAvatar" class="avatar-circle" style="background-color: var(--primary); margin-bottom: 10px;">
-          <span id="dashboardAvatarText">D</span>
-        </div>
-        
-        <h2 style="margin:0;"><span id="userName_welcome">...</span></h2>
-        
-        <div class="role-badge" style="margin-top: 8px;">
-          <i class="fa-solid fa-hand-holding-droplet"></i>
-          <span id="userRole">Donor</span>
-        </div>
-        
-        <p class="muted" style="margin-top:8px;">Your action can save lives today</p>
-        
-        <button id="editProfileBtn" class="action-btn secondary" style="margin-top:12px; padding: 8px 12px; font-size: 14px;">
-          <i class="fa-solid fa-user-pen"></i> Edit Profile
-        </button>
+    
+    <div class="profile-avatar-container">
+      <div id="dashboardAvatar" class="profile-avatar">
+        <span id="dashboardAvatarText">S</span>
       </div>
-      
-      <!-- Donor Info Preview -->
-      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: grid; gap: 8px; font-size: 14px;">
-        <div><i class="fa-solid fa-droplet" style="color:var(--primary); width:20px"></i> <strong>Blood Group:</strong> <span id="displayBloodGroup">...</span></div>
+      <button id="logoutBtn" class="logout-icon-btn">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+    
+    <div class="profile-name-section">
+      <h2 id="userName_welcome">A.H.SIFAT</h2>
+      <p class="role-text">Donor</p>
+    </div>
+  </div>
+
+  <main class="container profile-content">
+    <!-- Stats Cards Row -->
+    <div class="stats-row">
+      <div class="profile-stat-card">
+        <i class="fa-solid fa-heart stat-icon"></i>
+        <span class="stat-label">Life Saved</span>
+        <span id="lifeSavedCount" class="stat-value">0</span>
+      </div>
+      <div class="profile-stat-card">
+        <i class="fa-solid fa-droplet stat-icon"></i>
+        <span class="stat-label">Blood Group</span>
+        <span id="displayBloodGroup" class="stat-value-large">A+</span>
+      </div>
+      <div id="donationStatusCard" class="profile-stat-card donation-card">
+        <span id="nextDonationLabel" class="stat-label-date">Next Donation</span>
+        <span id="nextDonationDate" class="stat-value-date">--</span>
+      </div>
+    </div>
+
+    <!-- Switch Options -->
+    <div class="options-list">
+      <div class="option-item-switch">
+        <span>Available to donate</span>
+        <label class="switch">
+          <input type="checkbox" id="availableToggle" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="option-item-switch">
+        <span>Lock your profile</span>
+        <label class="switch">
+          <input type="checkbox" id="lockProfileToggle">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Menu Options -->
+    <div class="options-list">
+      <div class="option-item" onclick="window.location.href='manage-address.html'">
+        <span>Manage Address</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </div>
+      <div class="option-item" onclick="window.location.href='history.html'">
+        <span>History</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </div>
+      <div class="option-item" id="contactDetailsBtn">
+        <span>Contact Details</span>
+        <i class="fa-solid fa-chevron-right"></i>
+      </div>
+    </div>
+
+    <!-- Extra Stats Section -->
+    <div class="extra-stats">
+      <div class="card stat-card-simple">
+        <div class="stat-title"><i class="fa-solid fa-people-group"></i> Total Donors</div>
+        <div class="stat-value" id="totalDonorsCount">—</div>
+      </div>
+      <div class="card stat-card-simple">
+        <div class="stat-title"><i class="fa-solid fa-notes-medical"></i> Active Blood Requests</div>
+        <div class="stat-value" id="activeRequestsCount">—</div>
+      </div>
+    </div>
+
+    <!-- Contact Details Section (Initially hidden) -->
+    <div id="contactDetailsSection" class="card" style="display:none; margin-top:16px;">
+      <h3 style="margin-bottom:12px;">Contact Details</h3>
+      <div style="display:grid; gap:8px; font-size:14px;">
         <div><i class="fa-solid fa-location-dot" style="color:var(--primary); width:20px"></i> <strong>Location:</strong> <span id="displayLocation">Not set</span></div>
         <div><i class="fa-solid fa-phone" style="color:var(--primary); width:20px"></i> <strong>Phone:</strong> <span id="displayPhone">Not set</span></div>
-        <div><i class="fa-solid fa-lock" style="color:var(--primary); width:20px"></i> <strong>Profile Status:</strong> <span id="displayLockStatus">Public</span></div>
       </div>
-    </section>
+    </div>
 
-    <!-- Profile Access Requests Section -->
-    <section class="card" id="accessRequestsSection" style="display:none; margin-bottom: 24px;">
-      <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-user-shield"></i> Profile Access Requests</h3>
-      <div id="requestsList" style="display: grid; gap: 12px;">
-        <!-- Requests will be injected here -->
-      </div>
+    <!-- My Blood Requests (As Requestor) - Hidden by default, can be seen in History -->
+    <section class="card" id="myRequestsSection" style="display:none; margin-top:16px;">
+      <h3 style="margin-bottom:12px;">My Blood Requests</h3>
+      <div id="myRequestsList" style="display:grid; gap:10px;"></div>
     </section>
 
     <!-- Edit Profile Modal -->
-    <div id="editProfileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:100; align-items:center; justify-content:center;">
+    <div id="editProfileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
       <div class="card" style="width:90%; max-width:400px; padding:24px;">
         <h2 style="margin-bottom:16px">Edit Profile</h2>
         <form id="editProfileForm" style="display:grid; gap:12px;">
@@ -93,10 +143,6 @@
               <span style="font-size:12px; color:var(--muted)">Pick a color for your profile icon</span>
             </div>
           </div>
-          <div style="display:flex; align-items:center; gap:8px; padding:8px 0;">
-            <input type="checkbox" id="editProfileLocked" style="width:18px; height:18px;">
-            <label for="editProfileLocked" style="font-size:14px; cursor:pointer;">Lock My Profile (Hide Phone Number)</label>
-          </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;">
             <button type="button" id="cancelEditBtn" class="action-btn secondary" style="padding:10px;">Cancel</button>
             <button type="submit" class="action-btn" style="padding:10px;">Save Changes</button>
@@ -104,47 +150,6 @@
         </form>
       </div>
     </div>
-
-    <section class="stats">
-      <div class="card stat-card">
-        <div class="stat-title"><i class="fa-solid fa-people-group"></i> Total Donors</div>
-        <div class="stat-value" id="totalDonorsCount">—</div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-title"><i class="fa-solid fa-notes-medical"></i> Active Blood Requests</div>
-        <div class="stat-value" id="activeRequestsCount">—</div>
-      </div>
-      <div class="card stat-card">
-        <div class="stat-title"><i class="fa-solid fa-calendar-check"></i> Last Donation Date</div>
-        <div class="stat-value" id="lastDonationStatValue">—</div>
-      </div>
-    </section>
-
-    <!-- Main Actions -->
-    <div class="actions">
-      <a href="find-donors.html" class="action-btn">
-        <i class="fa-solid fa-magnifying-glass"></i> Find Donors
-      </a>
-      <button class="action-btn secondary" onclick="window.location.href='blood-requests.html'">
-        <i class="fa-solid fa-list-ul"></i> View Blood Requests
-      </button>
-      <button class="action-btn" id="donationStatusBtn" title="">
-        <i class="fa-solid fa-pen-to-square"></i> Update Donation Status
-      </button>
-    </div>
-
-    <!-- My Blood Requests (As Requestor) -->
-    <section class="card" id="myRequestsSection" style="display:none; margin-top:16px;">
-      <h3 style="margin-bottom:12px;">My Blood Requests</h3>
-      <div id="myRequestsList" style="display:grid; gap:10px;"></div>
-      <a href="blood-requests.html" style="display:block; margin-top:12px; font-size:13px; text-align:center; color:var(--primary); text-decoration:none;">View all requests &rarr;</a>
-    </section>
-
-    <!-- Responses Given (As Donor) -->
-    <section class="card" id="myResponsesSection" style="display:none; margin-top:16px;">
-      <h3 style="margin-bottom:12px;">Requests I Responded To</h3>
-      <div id="myResponsesList" style="display:grid; gap:10px;"></div>
-    </section>
   </main>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -246,7 +251,7 @@
     <a href="#" class="nav-item">
       <i class="fa-solid fa-message"></i>
     </a>
-    <a href="#" class="nav-item">
+    <a href="notifications.html" class="nav-item">
       <i class="fa-solid fa-bell"></i>
     </a>
     <a href="donor-dashboard.html" class="nav-item active">
