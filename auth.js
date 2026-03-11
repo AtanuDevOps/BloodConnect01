@@ -1,101 +1,147 @@
-// Auth (Signup + Login) using Firebase compat SDK
-// Assumes firebase-app-compat.js, firebase-auth-compat.js, firebase-firestore-compat.js and firebase-config.js are loaded
+// Unified Auth (Login + Signup) using Firebase compat SDK
 (function () {
   var app = (firebase.apps && firebase.apps.length) ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
   var auth = firebase.auth(app);
   var db = firebase.firestore(app);
 
-  var btnCreate = document.getElementById("btnCreate");
-  var btnSignIn = document.getElementById("btnSignIn");
-  var bloodGroupWrap = document.getElementById("bloodGroupWrap");
-  var bloodGroupInput = document.getElementById("bloodGroup");
+  // UI Elements
+  var loginToggle = document.getElementById("loginToggle");
+  var signupToggle = document.getElementById("signupToggle");
+  var toggleSelector = document.getElementById("toggleSelector");
+  var formTitle = document.getElementById("formTitle");
+  var formSubtitle = document.getElementById("formSubtitle");
+  var submitBtn = document.getElementById("submitBtn");
+  var authForm = document.getElementById("authForm");
   var errorEl = document.getElementById("error");
 
-  var selectedRole = "donor";
+  // Fields
+  var nameField = document.getElementById("nameField");
+  var signupSpecificFields = document.getElementById("signupSpecificFields");
+  var identifierInput = document.getElementById("identifier");
+  var identifierLabel = document.getElementById("identifierLabel");
+  var passwordInput = document.getElementById("password");
+
+  var isLogin = true;
 
   try {
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   } catch (_) {}
 
+  // Auth Guard
   auth.onAuthStateChanged(async function (user) {
     if (!user) return;
     try {
       window.location.href = "blood-requests.html";
     } catch (e) {
-      console.error("[Auth] Failed to route to feed:", e);
+      console.error("[Auth] Navigation error:", e);
     }
   });
 
-  bloodGroupWrap && bloodGroupWrap.classList.add("show");
-  if (bloodGroupInput) bloodGroupInput.required = true;
-
-  async function createAccount() {
+  // Toggle Logic
+  function updateUI() {
+    if (isLogin) {
+      toggleSelector.style.left = "4px";
+      loginToggle.classList.add("active");
+      signupToggle.classList.remove("active");
+      formTitle.textContent = "LOGIN";
+      formSubtitle.textContent = "LOG IN WITH YOUR DETAILS";
+      submitBtn.textContent = "LOGIN";
+      nameField.style.display = "none";
+      signupSpecificFields.style.display = "none";
+    } else {
+      toggleSelector.style.left = "50%";
+      signupToggle.classList.add("active");
+      loginToggle.classList.remove("active");
+      formTitle.textContent = "SIGN UP";
+      formSubtitle.textContent = "SIGN UP WITH YOUR DETAILS";
+      submitBtn.textContent = "SIGN UP";
+      nameField.style.display = "grid";
+      signupSpecificFields.style.display = "block";
+    }
     errorEl.textContent = "";
-    var name = (document.getElementById("name").value || "").trim();
-    var email = (document.getElementById("email").value || "").trim();
-    var password = document.getElementById("password").value;
-    var bloodGroup = (bloodGroupInput.value || "").trim();
-
-    if (!bloodGroup) {
-      errorEl.textContent = "Blood group is required.";
-      console.warn("[Auth] Missing blood group for donor account");
-      return;
-    }
-
-    try {
-      console.log("[Auth] Creating account…");
-      var cred = await auth.createUserWithEmailAndPassword(email, password);
-      var user = cred.user;
-      var uid = user.uid;
-      if (name) {
-        await user.updateProfile({ displayName: name });
-      }
-
-      var data = {
-        name: name,
-        email: email,
-        role: "donor",
-        profileLocked: false,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      data.bloodGroup = bloodGroup;
-
-      console.log("[Auth] Writing Firestore users doc for uid:", uid, data);
-      await db.collection("users").doc(uid).set(data);
-      console.log("[Auth] Account created and profile saved");
-
-      window.location.href = "donor-dashboard.html";
-    } catch (err) {
-      console.error("[Auth] Create account error:", err);
-      errorEl.textContent = err && err.message ? err.message : "Signup failed";
-    }
   }
 
-  async function signIn() {
-    errorEl.textContent = "";
-    var email = (document.getElementById("email").value || "").trim();
-    var password = document.getElementById("password").value;
-    try {
-      console.log("[Auth] Signing in…");
-      var cred = await auth.signInWithEmailAndPassword(email, password);
-      var uid = cred.user.uid;
-      console.log("[Auth] Signed in, fetching user profile:", uid);
-      var snap = await db.collection("users").doc(uid).get();
-      if (!snap.exists) {
-        console.warn("[Auth] No profile document found for uid:", uid);
-        errorEl.textContent = "Profile not found. Please contact support.";
-        return;
-      }
-      var profile = snap.data();
-      console.log("[Auth] Loaded profile:", profile);
+  loginToggle.addEventListener("click", function() {
+    isLogin = true;
+    updateUI();
+  });
 
-      window.location.href = "blood-requests.html";
-    } catch (err) {
-      console.error("[Auth] Sign in error:", err);
-      errorEl.textContent = err && err.message ? err.message : "Sign-in failed";
+  signupToggle.addEventListener("click", function() {
+    isLogin = false;
+    updateUI();
+  });
+
+  // Validation
+  function validate() {
+    errorEl.textContent = "";
+    var password = passwordInput.value;
+    if (password.length < 6) {
+      errorEl.textContent = "Password must be at least 6 characters.";
+      return false;
     }
+    return true;
   }
 
-  btnCreate && btnCreate.addEventListener("click", createAccount);
-  btnSignIn && btnSignIn.addEventListener("click", signIn);
-})(); 
+  // Submission
+  authForm.addEventListener("submit", async function(e) {
+    e.preventDefault();
+    if (!validate()) return;
+
+    var identifier = identifierInput.value.trim();
+    var password = passwordInput.value;
+    var email = identifier;
+
+    // Basic check: if no @, assume it's a phone and append dummy domain for Firebase auth
+    // (Firebase requires email for email/pass provider)
+    if (identifier.indexOf('@') === -1) {
+      email = identifier + "@bloodconnect.local";
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Processing...";
+
+    try {
+      if (isLogin) {
+        // LOGIN
+        await auth.signInWithEmailAndPassword(email, password);
+        window.location.href = "blood-requests.html";
+      } else {
+        // SIGN UP
+        var name = document.getElementById("name").value.trim();
+        var bloodGroup = document.getElementById("bloodGroup").value;
+        var location = document.getElementById("location").value.trim();
+
+        if (!bloodGroup) {
+          throw new Error("Please select your blood group.");
+        }
+
+        var cred = await auth.createUserWithEmailAndPassword(email, password);
+        var user = cred.user;
+        
+        if (name) {
+          await user.updateProfile({ displayName: name });
+        }
+
+        var userData = {
+          name: name,
+          phone: identifier.indexOf('@') === -1 ? identifier : "",
+          email: identifier.indexOf('@') !== -1 ? identifier : "",
+          bloodGroup: bloodGroup,
+          location: location,
+          role: "donor",
+          profileLocked: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("users").doc(user.uid).set(userData);
+        window.location.href = "blood-requests.html";
+      }
+    } catch (err) {
+      console.error("[Auth] Error:", err);
+      errorEl.textContent = err.message || "Operation failed.";
+      submitBtn.disabled = false;
+      submitBtn.textContent = isLogin ? "LOGIN" : "SIGN UP";
+    }
+  });
+
+})();

@@ -4,44 +4,65 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BloodConnect · Auth</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="./signup.css">
 </head>
-<body>
-  <div class="card">
-    <h1>Become a Donor</h1>
+<body class="auth-page">
+  <div class="auth-header">
+    <h1 class="app-title">BloodConnect</h1>
+  </div>
+
+  <div class="auth-card">
+    <div class="toggle-container">
+      <div id="toggleSelector" class="toggle-selector"></div>
+      <button id="loginToggle" class="toggle-btn active">LOGIN</button>
+      <button id="signupToggle" class="toggle-btn">SIGN UP</button>
+    </div>
+
+    <div id="formTitleSection" class="form-header">
+      <h2 id="formTitle">LOGIN</h2>
+      <p id="formSubtitle">LOG IN WITH YOUR DETAILS</p>
+    </div>
 
     <form id="authForm" autocomplete="on" novalidate>
-      <div>
-        <label for="name">Full Name</label>
-        <input id="name" name="name" type="text">
+      <!-- Signup Only Fields -->
+      <div id="nameField" class="input-group" style="display: none;">
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" placeholder="Enter your name">
       </div>
-      <div>
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" required>
+
+      <!-- Common Fields -->
+      <div class="input-group">
+        <label id="identifierLabel" for="identifier">Phone Number / Email</label>
+        <input id="identifier" name="identifier" type="text" placeholder="Enter phone or email" required>
       </div>
-      <div>
+
+      <!-- Signup Only Fields -->
+      <div id="signupSpecificFields" style="display: none;">
+        <div class="input-group">
+          <label for="bloodGroup">Blood group</label>
+          <select id="bloodGroup" name="bloodGroup">
+            <option value="">Select blood group</option>
+            <option>O+</option><option>O-</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="location">Location</label>
+          <input id="location" name="location" type="text" placeholder="Enter your location">
+        </div>
+      </div>
+
+      <div class="input-group">
         <label for="password">Password</label>
-        <input id="password" name="password" type="password" minlength="6" required>
+        <input id="password" name="password" type="password" placeholder="Minimum 6 characters" minlength="6" required>
       </div>
-      <div id="bloodGroupWrap">
-        <label for="bloodGroup">Blood Group</label>
-        <select id="bloodGroup" name="bloodGroup">
-          <option value="">Select blood group</option>
-          <option>O+</option>
-          <option>O-</option>
-          <option>A+</option>
-          <option>A-</option>
-          <option>B+</option>
-          <option>B-</option>
-          <option>AB+</option>
-          <option>AB-</option>
-        </select>
-      </div>
+
       <div class="error" id="error"></div>
-      <div class="role-switch">
-        <button id="btnCreate" class="submit" type="button">Create Donor Account</button>
-        <button id="btnSignIn" class="role-btn" type="button">Donor Sign In</button>
-      </div>
+      
+      <button id="submitBtn" class="submit-btn" type="submit">LOGIN</button>
     </form>
   </div>
 
