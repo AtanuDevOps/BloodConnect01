@@ -535,10 +535,127 @@ body {
   font-size: 14px;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .stats { grid-template-columns: 1fr }
-  .actions { grid-template-columns: 1fr }
-  .navbar { padding: 12px }
-  .container { padding: 0 12px }
+/* Modern Request Cards */
+.modern-req-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modern-req-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.modern-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.modern-info {
+  flex: 1;
+}
+
+.modern-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: #111;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.modern-blood-needed {
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.modern-time-badge {
+  background: #fdf2f2;
+  color: var(--primary);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modern-hospital {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.modern-hospital i {
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.modern-accept-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modern-accept-btn:hover {
+  background: var(--primary-dark);
+}
+
+.modern-accept-btn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Action Button Styles (Make Request & Search) */
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.action-btn.secondary {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
 }

@@ -119,12 +119,14 @@
         timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
 
+      const avatarInitial = (req.patientName || "A").charAt(0).toUpperCase();
+
       return `
         <div class="modern-req-card">
           <div class="modern-req-top">
-            <div class="modern-avatar"></div>
+            <div class="modern-avatar">${avatarInitial}</div>
             <div class="modern-info">
-              <div class="modern-name">${req.patientName || "A.H SIFAT"}</div>
+              <div class="modern-name">${(req.patientName || "Anonymous").toUpperCase()}</div>
               <div class="modern-blood-needed">${req.bloodGroup} Blood Needed</div>
             </div>
             <div class="modern-time-badge">
