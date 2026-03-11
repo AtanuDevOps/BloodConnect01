@@ -27,10 +27,15 @@
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   } catch (_) {}
 
-  // Auth Guard
+  // Auth Guard: Redirect already logged-in users
+  // We use a flag to skip this during the active signup/login process
+  var isProcessing = false;
+
   auth.onAuthStateChanged(async function (user) {
-    if (!user) return;
+    if (!user || isProcessing) return;
     try {
+      // Only redirect if we're not actively logging in/signing up
+      console.log("[Auth] User already logged in, redirecting to feed...");
       window.location.href = "blood-requests.html";
     } catch (e) {
       console.error("[Auth] Navigation error:", e);
@@ -99,6 +104,7 @@
 
     submitBtn.disabled = true;
     submitBtn.textContent = "Processing...";
+    isProcessing = true; // Prevent onAuthStateChanged from redirecting early
 
     try {
       if (isLogin) {
@@ -115,11 +121,15 @@
           throw new Error("Please select your blood group.");
         }
 
+        // 1. Create the account (Wait for UID)
         var cred = await auth.createUserWithEmailAndPassword(email, password);
         var user = cred.user;
         
+        // 2. Prepare tasks to run in parallel
+        var tasks = [];
+        
         if (name) {
-          await user.updateProfile({ displayName: name });
+          tasks.push(user.updateProfile({ displayName: name }));
         }
 
         var userData = {
@@ -133,11 +143,19 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        await db.collection("users").doc(user.uid).set(userData);
+        tasks.push(db.collection("users").doc(user.uid).set(userData));
+
+        // 3. Execute tasks in parallel
+        // We start the tasks but redirect immediately to improve perceived speed.
+        // The next page has a retry mechanism to handle the profile loading.
+        Promise.all(tasks).catch(err => console.error("[Auth] Background tasks error:", err));
+        
+        console.log("[Auth] Account created, tasks started in background. Redirecting...");
         window.location.href = "blood-requests.html";
       }
     } catch (err) {
       console.error("[Auth] Error:", err);
+      isProcessing = false;
       errorEl.textContent = err.message || "Operation failed.";
       submitBtn.disabled = false;
       submitBtn.textContent = isLogin ? "LOGIN" : "SIGN UP";

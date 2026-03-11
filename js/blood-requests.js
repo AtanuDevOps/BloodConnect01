@@ -24,7 +24,16 @@
     }
     currentUser = user;
     try {
-      const doc = await db.collection("users").doc(user.uid).get();
+      let doc = await db.collection("users").doc(user.uid).get();
+      
+      // Optimization: If doc doesn't exist yet (e.g. fresh signup), 
+      // wait a moment and retry once.
+      if (!doc.exists) {
+        console.log("[Feed] Profile not found, retrying in 1s...");
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        doc = await db.collection("users").doc(user.uid).get();
+      }
+
       if (doc.exists) {
         currentUserProfile = doc.data();
         setupUI();
@@ -35,9 +44,15 @@
           navProfile.style.backgroundColor = currentUserProfile.profileColor || "#CE1126";
           navProfile.textContent = (currentUserProfile.name || "U").charAt(0).toUpperCase();
         }
+      } else {
+        console.warn("[Feed] Profile not found after retry. Showing feed anyway.");
+        setupUI();
+        loadRequests();
       }
     } catch (e) {
       console.error("Profile load error", e);
+      setupUI();
+      loadRequests();
     }
   });
 

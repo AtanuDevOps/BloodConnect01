@@ -12,3 +12,12 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Auth & Firestore
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Enable offline persistence for better UX and background writes
+db.enablePersistence().catch((err) => {
+  if (err.code == 'failed-precondition') {
+    console.warn("Firestore persistence failed: Multiple tabs open");
+  } else if (err.code == 'unimplemented') {
+    console.warn("Firestore persistence is not supported in this browser");
+  }
+});

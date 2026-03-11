@@ -14,33 +14,43 @@
         window.location.href = "index.html";
         return;
       }
+      
+      // OPTIMIZATION: Render basic UI immediately while fetching data
+      console.log("[Dashboard] User logged in:", user.uid);
+      
+      // Initialize counters and donation UI with default loading states
+      loadTotalDonors();
+      loadActiveRequests();
+      updateDonationStatusUI();
+
       try {
         var uid = user.uid;
-        console.log("[Dashboard] User logged in:", uid);
+        
+        // Single Firestore query to load profile
         var snap = await db.collection("users").doc(uid).get();
         if (snap.exists) {
           window.currentUserProfile = snap.data();
           console.log("[Dashboard] Loaded profile:", window.currentUserProfile);
+          
+          // Dynamically update UI fields once data arrives
           var nameEl = document.getElementById("userName") || document.getElementById("userName_welcome");
           var roleEl = document.getElementById("userRole");
-          if (nameEl) nameEl.textContent = window.currentUserProfile.name || user.displayName || "Unknown";
+          if (nameEl) nameEl.textContent = window.currentUserProfile.name || user.displayName || "User";
           if (roleEl) roleEl.textContent = window.currentUserProfile.role || "donor";
 
-          // Update extra donor info if elements exist
+          // Update extra donor info
           var displayBloodGroup = document.getElementById("displayBloodGroup");
           var displayLocation = document.getElementById("displayLocation");
           var displayPhone = document.getElementById("displayPhone");
-          var displayLockStatus = document.getElementById("displayLockStatus");
 
           if (displayBloodGroup) displayBloodGroup.textContent = window.currentUserProfile.bloodGroup || "Not set";
           if (displayLocation) displayLocation.textContent = window.currentUserProfile.location || "Not set";
           if (displayPhone) displayPhone.textContent = window.currentUserProfile.phone || "Not set";
           
-          // New Stats
+          // Stats & Toggles
           var lifeSavedEl = document.getElementById("lifeSavedCount");
           if (lifeSavedEl) lifeSavedEl.textContent = window.currentUserProfile.donationCount || 0;
 
-          // Switches
           var availableToggle = document.getElementById("availableToggle");
           var lockProfileToggle = document.getElementById("lockProfileToggle");
           if (availableToggle) availableToggle.checked = window.currentUserProfile.available !== false;
@@ -56,11 +66,13 @@
             avatarTextEl.textContent = pName.charAt(0).toUpperCase();
           }
 
-          // Load access requests if donor
-          if (window.currentUserProfile.role === "donor") {
+          // Refresh donation status UI with actual profile data
+          updateDonationStatusUI();
+          
+          // Load access requests if donor (Only on dashboards that need it)
+          if (window.currentUserProfile.role === "donor" && typeof loadAccessRequests === "function") {
             loadAccessRequests();
           }
-          updateDonationStatusUI();
         } else {
           window.currentUserProfile = null;
           console.warn("[Dashboard] Profile document not found for uid:", uid);
@@ -89,11 +101,6 @@
     }
   }
 
-  // Load count on dashboard load
-  loadTotalDonors();
-  loadActiveRequests();
-  updateDonationStatusUI();
-
   // Task 1.5: Fix "Active Blood Requests" Count
   async function loadActiveRequests() {
     var countEl = document.getElementById("activeRequestsCount");
@@ -101,13 +108,7 @@
 
     try {
       // "Treat ALL documents in bloodRequests as active"
-      // Future improvement: .where("status", "==", "active")
       var snapshot = await db.collection("bloodRequests").get();
-      
-      // If status field exists in future, we might need client-side filter 
-      // if we want to avoid creating a composite index right now or if status is optional.
-      // But user said: "Count all documents" for now.
-      
       countEl.textContent = snapshot.size;
     } catch (err) {
       console.error("[Dashboard] Failed to load active requests:", err);
