@@ -63,9 +63,14 @@ body {
 .container {
   max-width: 1080px;
   margin: 20px auto;
-  padding: 0 16px;
+  padding: 0 16px 110px; /* Added 110px bottom padding to clear bottom nav */
   display: grid;
   gap: 16px;
+}
+
+/* Chat page spacing */
+.chat-main {
+  padding-bottom: 110px;
 }
 
 /* Cards */
@@ -449,7 +454,7 @@ body.home-page {
 
 /* Responsive adjustment for container padding */
 body {
-  padding-bottom: 80px;
+  /* Removed padding-bottom: 80px; handled by .container now */
 }
 
 @media (max-width: 600px) {
@@ -467,7 +472,7 @@ body {
   background-image: radial-gradient(circle at 0% 0%, rgba(206,17,38,0.03) 0%, transparent 30%),
                     radial-gradient(circle at 100% 100%, rgba(206,17,38,0.03) 0%, transparent 30%);
   background-attachment: fixed;
-  padding-bottom: 100px;
+  /* padding-bottom: 100px; - Handled by .container now */
 }
 
 .profile-header {
@@ -573,7 +578,7 @@ body {
 
 .profile-content {
   margin-top: -30px;
-  padding: 0 16px;
+  padding: 0 16px 110px; /* Added 110px bottom padding to clear bottom nav */
 }
 
 .stats-row {
