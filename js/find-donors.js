@@ -46,6 +46,7 @@
       
       const snapshot = await db.collection("users")
         .where("role", "==", "donor")
+        .where("available", "==", true) // Filter for available donors
         .get();
 
       allDonors = [];
