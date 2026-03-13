@@ -577,7 +577,7 @@ body {
 }
 
 .profile-content {
-  margin-top: -30px;
+  margin-top: 20px;
   padding: 0 16px 110px; /* Added 110px bottom padding to clear bottom nav */
 }
 
