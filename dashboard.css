@@ -686,8 +686,37 @@ body {
   color: #ccc;
 }
 
-/* Switch Styling */
-.switch {
+/* Preset Color Options */
+.color-presets {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.color-option {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+}
+
+.color-option.selected {
+  border-color: var(--text);
+  transform: scale(1.1);
+}
+
+.color-red { background-color: #CE1126; }
+.color-blue { background-color: #2563eb; }
+.color-green { background-color: #10b981; }
+.color-purple { background-color: #8b5cf6; }
+.color-orange { background-color: #f59e0b; }
   position: relative;
   display: inline-block;
   width: 44px;

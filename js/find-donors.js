@@ -7,7 +7,19 @@
   const searchInput = document.getElementById("searchInput");
   const locationInput = document.getElementById("locationInput");
   const bloodFilter = document.getElementById("bloodFilter");
+  const searchBtn = document.getElementById("searchBtn");
   const backBtn = document.getElementById("backBtn");
+
+  // Contact Modal Elements
+  const contactModal = document.getElementById("contactModal");
+  const modalClose = document.querySelector(".modal-close");
+  const modalAvatar = document.getElementById("modalAvatar");
+  const modalName = document.getElementById("modalName");
+  const modalPhone = document.getElementById("modalPhone");
+  const modalBlood = document.getElementById("modalBlood");
+  const modalAge = document.getElementById("modalAge");
+  const modalLocation = document.getElementById("modalLocation");
+  const callBtn = document.getElementById("callBtn");
 
   let allDonors = [];
   let currentUser = null;
@@ -42,8 +54,7 @@
   // 3. Fetch Donors
   async function loadDonors() {
     try {
-      donorsGrid.innerHTML = '<div class="no-results">Loading donors...</div>';
-      
+      // Donors grid already has skeletons from HTML
       const snapshot = await db.collection("users")
         .where("role", "==", "donor")
         .where("available", "==", true) // Filter for available donors
@@ -52,18 +63,14 @@
       allDonors = [];
       snapshot.forEach(doc => {
         const data = doc.data();
-        // Check availability (treat undefined as true for now per requirements)
-        const isActive = data.isActive !== false; 
-        
-        if (isActive) {
-          allDonors.push({
-            id: doc.id,
-            name: data.name || "Anonymous Donor",
-            bloodGroup: data.bloodGroup || "?",
-            location: data.location || data.city || "Location not set",
-            ...data
-          });
-        }
+        allDonors.push({
+          id: doc.id,
+          name: data.name || "Anonymous Donor",
+          bloodGroup: data.bloodGroup || "?",
+          location: data.location || data.city || "Location not set",
+          age: data.age || "N/A",
+          ...data
+        });
       });
 
       renderDonors();
@@ -96,61 +103,14 @@
       const endMs = tsMillis(donor.donationCooldownEnd);
       const now = Date.now();
       const cooldownActive = !!(endMs && now <= endMs);
-      let phoneHtml = "";
-      let availabilityBadge = "";
+      
+      let statusHtml = "";
       if (cooldownActive) {
-        const days = Math.max(0, Math.floor((now - (lastMs || now)) / 86400000));
-        availabilityBadge = `
-          <div style="margin-top:6px; font-size:12px; color:#CE1126;">
-            <span style="background:#fff0f2; color:#CE1126; padding:2px 8px; border-radius:12px; border:1px solid #ffd4da;">
-              Temporarily unavailable — recently donated
-            </span>
-            <div style="margin-top:4px; font-size:12px;">Donated ${days} days ago</div>
-          </div>
-        `;
+        const lastDate = new Date(lastMs);
+        const dateStr = lastDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+        statusHtml = `<div class="donor-status status-cooldown">Last Donation: ${dateStr}</div>`;
       } else {
-        availabilityBadge = `
-          <div style="margin-top:6px; font-size:12px; color:green;">
-            <span style="background:#e9f9ee; color:green; padding:2px 8px; border-radius:12px; border:1px solid #c8f0d2;">
-              Available donor
-            </span>
-          </div>
-        `;
-        const isLocked = donor.profileLocked === true;
-        if (!isLocked) {
-          phoneHtml = `
-            <div class="donor-location">
-              <i class="fa-solid fa-phone"></i>
-              <span>${escapeHtml(donor.phone || "No phone")}</span>
-            </div>
-          `;
-        } else {
-          const requests = donor.accessRequests || [];
-          const myRequest = currentUser ? requests.find(r => r.requesterId === currentUser.uid) : null;
-          if (myRequest && myRequest.status === 'approved') {
-            phoneHtml = `
-              <div class="donor-location">
-                <i class="fa-solid fa-phone"></i>
-                <span>${escapeHtml(donor.phone || "No phone")}</span>
-              </div>
-              <div style="font-size:10px; color:green; margin-top:4px;">
-                <i class="fa-solid fa-check-circle"></i> Access Approved
-              </div>
-            `;
-          } else if (myRequest && myRequest.status === 'pending') {
-            phoneHtml = `
-              <button class="action-btn secondary" disabled style="width:100%; margin-top:8px; font-size:12px; padding:6px; opacity:0.7;">
-                <i class="fa-solid fa-clock"></i> Request Pending
-              </button>
-            `;
-          } else {
-            phoneHtml = `
-              <button onclick="requestAccess('${donor.id}')" class="action-btn" style="width:100%; margin-top:8px; font-size:12px; padding:6px;">
-                <i class="fa-solid fa-lock"></i> Request Contact
-              </button>
-            `;
-          }
-        }
+        statusHtml = `<div class="donor-status status-active">Active Donor</div>`;
       }
 
       const profileColor = donor.profileColor || "#CE1126";
@@ -158,28 +118,72 @@
 
       return `
       <div class="donor-card">
-        <div class="avatar-circle" style="background-color: ${profileColor}; width: 56px; height: 56px; font-size: 22px;">
+        <div class="card-top-left">${donor.bloodGroup}</div>
+        <div class="card-top-right"><i class="fa-solid fa-ellipsis-vertical"></i></div>
+        
+        <div class="avatar-circle" style="background-color: ${profileColor}; width: 64px; height: 64px; font-size: 24px; margin-top: 10px;">
           ${firstLetter}
         </div>
+        
         <div class="donor-info">
-          <h3 style="display:flex; align-items:center; gap:8px;">
-            ${escapeHtml(donor.name)}
-            <span style="font-size:13px; background:#fff0f2; color:#CE1126; padding:2px 8px; border-radius:12px; border:1px solid #ffd4da;">${donor.bloodGroup}</span>
-          </h3>
+          <h3>${escapeHtml(donor.name)}</h3>
+          ${statusHtml}
           <div class="donor-location">
             <i class="fa-solid fa-location-dot"></i>
             <span>${escapeHtml(donor.location)}</span>
           </div>
-          ${availabilityBadge}
-          ${cooldownActive ? "" : phoneHtml}
         </div>
+        
+        <button onclick="openContactModal('${donor.id}')" class="view-contact-btn">View Contact</button>
       </div>
     `}).join("");
   }
 
-  // 5. Event Listeners
+  // 5. Contact Modal Logic
+  window.openContactModal = function(donorId) {
+    const donor = allDonors.find(d => d.id === donorId);
+    if (!donor) return;
+
+    modalName.textContent = donor.name;
+    modalBlood.textContent = donor.bloodGroup;
+    modalAge.textContent = donor.age;
+    modalLocation.textContent = donor.location;
+    modalAvatar.textContent = (donor.name || "?").charAt(0).toUpperCase();
+    modalAvatar.style.backgroundColor = donor.profileColor || "#CE1126";
+    
+    // Logic for contact access
+    const isLocked = donor.profileLocked === true;
+    const requests = donor.accessRequests || [];
+    const myRequest = currentUser ? requests.find(r => r.requesterId === currentUser.uid) : null;
+    
+    if (!isLocked || (myRequest && myRequest.status === 'approved')) {
+      modalPhone.textContent = donor.phone || "No phone";
+      callBtn.style.display = "flex";
+      callBtn.onclick = () => window.location.href = `tel:${donor.phone}`;
+    } else if (myRequest && myRequest.status === 'pending') {
+      modalPhone.textContent = "Request Pending";
+      callBtn.style.display = "none";
+    } else {
+      modalPhone.textContent = "Contact Hidden";
+      callBtn.style.display = "flex";
+      callBtn.querySelector('span').textContent = "REQUEST CONTACT";
+      callBtn.onclick = () => requestAccess(donor.id);
+    }
+
+    contactModal.style.display = "flex";
+  };
+
+  if (modalClose) {
+    modalClose.onclick = () => contactModal.style.display = "none";
+  }
+  window.onclick = (event) => {
+    if (event.target == contactModal) contactModal.style.display = "none";
+  };
+
+  // 6. Event Listeners
+  if (searchBtn) searchBtn.addEventListener("click", renderDonors);
   searchInput.addEventListener("input", renderDonors);
-  if (locationInput) locationInput.addEventListener("input", renderDonors);
+  locationInput.addEventListener("input", renderDonors);
   bloodFilter.addEventListener("change", renderDonors);
 
   // 6. Request Access Handler

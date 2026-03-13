@@ -15,13 +15,16 @@
       border: 1px solid var(--border);
       box-shadow: 0 4px 12px rgba(0,0,0,0.03);
       display: grid;
-      gap: 16px;
+      gap: 12px;
       margin-bottom: 24px;
     }
-    .search-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 150px;
-      gap: 16px;
+    .search-row {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+    .search-row > * {
+      flex: 1;
     }
     .search-input-group {
       position: relative;
@@ -54,53 +57,152 @@
       font-size: 14px;
       background-color: #fff;
     }
+    .search-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background 0.2s;
+    }
+    .search-btn:hover { background: var(--primary-dark); }
     
     /* Donors Grid */
     .donors-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
     }
     .donor-card {
       background: #fff;
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
+      border-radius: 16px;
+      padding: 16px;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 16px;
+      text-align: center;
+      gap: 10px;
       transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+    .card-top-left {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 15px;
+    }
+    .card-top-right {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      color: var(--muted);
+      cursor: pointer;
     }
     .donor-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(206,17,38,0.08);
     }
-    .blood-badge {
-      width: 50px;
-      height: 50px;
-      background: #fff0f2;
-      color: var(--primary);
-      border: 1px solid #ffd4da;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 18px;
-      flex-shrink: 0;
-    }
     .donor-info h3 {
-      margin: 0 0 4px;
-      font-size: 16px;
+      margin: 4px 0 2px;
+      font-size: 14px;
+      font-weight: 700;
       color: var(--text);
+      text-transform: uppercase;
     }
+    .donor-status {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .status-active { color: #10b981; }
+    .status-cooldown { color: var(--primary); }
+
     .donor-location {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--muted);
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      gap: 4px;
     }
+    .view-contact-btn {
+      width: 100%;
+      padding: 8px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+      align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-content {
+      background: #fff;
+      width: 100%;
+      max-width: 360px;
+      border-radius: 24px;
+      padding: 24px;
+      position: relative;
+      text-align: center;
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      font-size: 20px; color: var(--muted);
+      cursor: pointer;
+    }
+    .modal-avatar {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; font-weight: 700; color: #fff;
+    }
+    .modal-info-grid {
+      display: grid; gap: 12px; text-align: left; margin-top: 20px;
+    }
+    .modal-info-item {
+      display: flex; align-items: center; gap: 12px; font-size: 14px;
+    }
+    .modal-info-item i { color: var(--primary); width: 16px; }
+
+    /* Skeleton Loading */
+    .skeleton {
+      background: #f3f4f6;
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: 10px;
+    }
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
     .no-results {
       grid-column: 1 / -1;
       text-align: center;
@@ -109,10 +211,6 @@
       background: #fff;
       border-radius: 14px;
       border: 1px dashed var(--border);
-    }
-
-    @media (max-width: 600px) {
-      .search-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -138,15 +236,8 @@
 
     <!-- Search & Filter -->
     <div class="search-section">
-      <div class="search-grid">
-        <div class="search-input-group">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="searchInput" class="search-input" placeholder="Search by name...">
-        </div>
-        <div class="search-input-group">
-          <i class="fa-solid fa-location-dot"></i>
-          <input type="text" id="locationInput" class="search-input" placeholder="Search by location...">
-        </div>
+      <!-- Row 1: Blood Group + Location -->
+      <div class="search-row">
         <select id="bloodFilter" class="filter-select">
           <option value="All">All Blood</option>
           <option value="A+">A+</option>
@@ -158,13 +249,76 @@
           <option value="O+">O+</option>
           <option value="O-">O-</option>
         </select>
+        <div class="search-input-group">
+          <i class="fa-solid fa-location-dot"></i>
+          <input type="text" id="locationInput" class="search-input" placeholder="Location">
+        </div>
       </div>
+      <!-- Row 2: Name search field -->
+      <div class="search-input-group">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" class="search-input" placeholder="Search by name...">
+      </div>
+      <!-- Row 3: Search button -->
+      <button id="searchBtn" class="search-btn">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span>SEARCH</span>
+      </button>
     </div>
 
     <!-- Results -->
     <div id="donorsGrid" class="donors-grid">
-      <!-- Donors will be injected here -->
-      <div class="no-results">Loading donors...</div>
+      <!-- Loading Skeletons -->
+      <div class="donor-card skeleton" style="height: 220px;"></div>
+      <div class="donor-card skeleton" style="height: 220px;"></div>
+      <div class="donor-card skeleton" style="height: 220px;"></div>
+      <div class="donor-card skeleton" style="height: 220px;"></div>
+    </div>
+  </div>
+
+  <!-- Contact Modal -->
+  <div id="contactModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close">&times;</span>
+      <div id="modalAvatar" class="modal-avatar">A</div>
+      <h2 id="modalName" style="margin-bottom: 4px; text-transform: uppercase;"></h2>
+      <p id="modalRole" class="muted" style="font-size: 14px;">Donor</p>
+      
+      <div class="modal-info-grid">
+        <div class="modal-info-item">
+          <i class="fa-solid fa-phone"></i>
+          <div>
+            <div class="muted" style="font-size: 11px;">Phone Number</div>
+            <strong id="modalPhone"></strong>
+          </div>
+        </div>
+        <div class="modal-info-item">
+          <i class="fa-solid fa-droplet"></i>
+          <div>
+            <div class="muted" style="font-size: 11px;">Blood Group</div>
+            <strong id="modalBlood"></strong>
+          </div>
+        </div>
+        <div class="modal-info-item">
+          <i class="fa-solid fa-calendar-days"></i>
+          <div>
+            <div class="muted" style="font-size: 11px;">Age</div>
+            <strong id="modalAge"></strong>
+          </div>
+        </div>
+        <div class="modal-info-item">
+          <i class="fa-solid fa-location-dot"></i>
+          <div>
+            <div class="muted" style="font-size: 11px;">Location</div>
+            <strong id="modalLocation"></strong>
+          </div>
+        </div>
+      </div>
+      
+      <button id="callBtn" class="search-btn" style="margin-top: 24px; border-radius: 999px;">
+        <i class="fa-solid fa-phone"></i>
+        <span>CALL NOW</span>
+      </button>
     </div>
   </div>
 

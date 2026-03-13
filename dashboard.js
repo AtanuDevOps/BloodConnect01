@@ -139,6 +139,18 @@
   var editProfileForm = document.getElementById("editProfileForm");
 
   if (editProfileBtn && editProfileModal) {
+    // Color preset selection
+    const colorOptions = document.querySelectorAll(".color-option");
+    const colorInput = document.getElementById("editProfileColor");
+    
+    colorOptions.forEach(opt => {
+      opt.addEventListener("click", () => {
+        colorOptions.forEach(o => o.classList.remove("selected"));
+        opt.classList.add("selected");
+        colorInput.value = opt.dataset.color;
+      });
+    });
+
     // Open Modal
     editProfileBtn.addEventListener("click", function () {
       if (window.currentUserProfile) {
@@ -146,7 +158,14 @@
         document.getElementById("editBloodGroup").value = window.currentUserProfile.bloodGroup || "";
         document.getElementById("editLocation").value = window.currentUserProfile.location || "";
         document.getElementById("editPhone").value = window.currentUserProfile.phone || "";
-        document.getElementById("editProfileColor").value = window.currentUserProfile.profileColor || "#CE1126";
+        
+        const currentPColor = window.currentUserProfile.profileColor || "#CE1126";
+        colorInput.value = currentPColor;
+        colorOptions.forEach(opt => {
+          if(opt.dataset.color === currentPColor) opt.classList.add("selected");
+          else opt.classList.remove("selected");
+        });
+
         document.getElementById("editProfileLocked").checked = !!window.currentUserProfile.profileLocked;
       }
       editProfileModal.style.display = "flex";
