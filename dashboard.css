@@ -484,6 +484,7 @@ body {
   text-align: center;
   position: relative;
   box-shadow: 0 4px 20px rgba(206,17,38,0.2);
+  width: 100%;
 }
 
 .profile-header-top {
@@ -577,7 +578,7 @@ body {
 }
 
 .profile-content {
-  margin-top: 20px;
+  margin-top: 40px; /* Increased from 20px to prevent overlap with curved header */
   padding: 0 16px 110px; /* Added 110px bottom padding to clear bottom nav */
 }
 
@@ -717,6 +718,8 @@ body {
 .color-green { background-color: #10b981; }
 .color-purple { background-color: #8b5cf6; }
 .color-orange { background-color: #f59e0b; }
+
+.switch {
   position: relative;
   display: inline-block;
   width: 44px;
@@ -788,7 +791,7 @@ input:checked + .slider:before {
 
 .stat-card-simple .stat-value {
   font-size: 18px;
-}  color: var(--primary);
+  color: var(--primary);
   font-weight: 600;
   margin-left: 6px;
 }
