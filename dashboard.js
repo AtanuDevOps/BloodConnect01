@@ -190,6 +190,8 @@
       var newLocked = document.getElementById("editProfileLocked").checked;
 
       try {
+        // TODO: integrate uploadImage here if profile picture upload is added to the modal
+
         await db.collection("users").doc(user.uid).update({
           name: newName,
           bloodGroup: newBloodGroup,

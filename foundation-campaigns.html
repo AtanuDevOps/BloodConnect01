@@ -24,12 +24,14 @@
     .label-sm { font-size:12px; color:var(--muted); display:block; margin-bottom:6px; }
     .input-field, .select-field, .textarea-field { width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; }
     .preview { width:100%; margin-top:8px; border-radius:8px; }
+    .campaign-image { width: 100%; border-radius: 12px; margin-top: 10px; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
   <script src="./firebase-config.js"></script>
+  <script src="./cloudinary-config.js"></script>
   <script>
     (function(){
       function getParam(name) {
@@ -118,7 +120,7 @@
                 +   '<div><strong>'+ escapeHtml(p.foundationName||foundationName) +'</strong> <span class="type-badge">'+ escapeHtml(p.campaignType||"Campaign") +'</span></div>'
                 +   '<div class="muted-sm">'+ dateStr +'</div>'
                 + '</div>'
-                + (p.imageURL ? '<img class="feed-image" src="'+ escapeHtml(p.imageURL) +'" alt="campaign">' : '')
+                + (p.imageURL ? '<img class="campaign-image" src="'+ escapeHtml(p.imageURL) +'" alt="campaign">' : '')
                 + '<div>'+ escapeHtml(p.caption||"") +'</div>'
                 + '<div class="reaction-bar">'
                 +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'like\')">👍 '+ (p.likeCount||0) +'</button>'
@@ -223,25 +225,28 @@
         var type = document.getElementById("campaignType").value;
         var file = document.getElementById("campaignImage").files[0];
         var caption = (document.getElementById("campaignCaption").value||"").trim();
-        if(!type || !file || !caption){ alert("Please fill all fields and select an image."); return; }
-        if(file.type && !file.type.startsWith("image/")){ alert("Please select an image file."); return; }
+        if(!type || !caption){ alert("Please fill all required fields."); return; }
+        if(file && file.type && !file.type.startsWith("image/")){ alert("Please select an image file."); return; }
         var btn = document.getElementById("postBtn");
         btn.disabled = true; btn.textContent = "Posting...";
         try{
           var fdDoc = await db.collection("foundation_requests").doc(fid).get();
           var fdName = fdDoc.exists ? (fdDoc.data().name || "Foundation") : "Foundation";
+          
+          var imageUrl = "";
+          if (file) {
+            imageUrl = await uploadImage(file);
+            if (!imageUrl) {
+              throw new Error("Cloudinary upload failed");
+            }
+          }
+
           var postRef = db.collection("foundation_campaign_posts").doc();
-          var storageRef = storage.ref("foundation_campaigns/"+ fid +"/"+ postRef.id +".jpg");
-          var metadata = { contentType: file.type || "image/jpeg" };
-          await new Promise(function(resolve, reject){
-            storageRef.put(file, metadata).then(resolve).catch(reject);
-          });
-          var url = await storageRef.getDownloadURL();
           await postRef.set({
             postId: postRef.id,
             foundationId: fid,
             foundationName: fdName,
-            imageURL: url,
+            imageURL: imageUrl,
             caption: caption,
             campaignType: type,
             createdBy: currentUser.uid,
@@ -304,8 +309,8 @@
           </select>
         </div>
         <div>
-          <label class="label-sm">Upload Image</label>
-          <input id="campaignImage" type="file" accept="image/*" class="input-field" required>
+          <label class="label-sm">Upload Image (Optional)</label>
+          <input id="campaignImage" type="file" accept="image/*" class="input-field">
           <img id="previewImg" class="preview hidden" alt="preview">
         </div>
         <div>

@@ -167,6 +167,8 @@
     btn.textContent = "Posting...";
 
     try {
+      // TODO: integrate uploadImage here if patient photo or medical report is added to the form
+
       const newReq = {
         createdBy: currentUser.uid,
         creatorRole: currentUserProfile.role,
