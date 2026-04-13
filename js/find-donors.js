@@ -115,14 +115,19 @@
 
       const profileColor = donor.profileColor || "#CE1126";
       const firstLetter = (donor.name || "?").charAt(0).toUpperCase();
+      const pImg = donor.profileImage;
+      
+      const avatarContent = pImg 
+        ? `<img src="${pImg}" class="profile-avatar-img">`
+        : `<span style="color:#fff">${firstLetter}</span>`;
 
       return `
       <div class="donor-card">
         <div class="card-top-left">${donor.bloodGroup}</div>
         <div class="card-top-right"><i class="fa-solid fa-ellipsis-vertical"></i></div>
         
-        <div class="avatar-circle" style="background-color: ${profileColor}; width: 64px; height: 64px; font-size: 24px; margin-top: 10px;">
-          ${firstLetter}
+        <div class="avatar-circle" style="background-color: ${profileColor}; width: 64px; height: 64px; font-size: 24px; margin-top: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          ${avatarContent}
         </div>
         
         <div class="donor-info">
@@ -148,8 +153,13 @@
     modalBlood.textContent = donor.bloodGroup;
     modalAge.textContent = donor.age;
     modalLocation.textContent = donor.location;
-    modalAvatar.textContent = (donor.name || "?").charAt(0).toUpperCase();
+    
     modalAvatar.style.backgroundColor = donor.profileColor || "#CE1126";
+    if (donor.profileImage) {
+      modalAvatar.innerHTML = `<img src="${donor.profileImage}" class="profile-avatar-img">`;
+    } else {
+      modalAvatar.textContent = (donor.name || "?").charAt(0).toUpperCase();
+    }
     
     // Logic for contact access
     const isLocked = donor.profileLocked === true;

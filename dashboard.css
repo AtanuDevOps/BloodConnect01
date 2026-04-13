@@ -511,6 +511,8 @@ body {
   cursor: pointer;
   padding: 8px;
   opacity: 0.9;
+  z-index: 100;
+  pointer-events: auto;
 }
 
 .text-btn:hover {
@@ -990,4 +992,11 @@ input:checked + .slider:before {
 
 .action-btn:hover {
   transform: translateY(-2px);
+}
+
+.profile-avatar-img { 
+  width: 100%;
+  height: 100%;
+  border-radius: 50%; 
+  object-fit: cover; 
 }

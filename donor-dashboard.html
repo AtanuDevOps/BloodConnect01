@@ -113,18 +113,18 @@
     <div id="editProfileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
       <div class="card" style="width:90%; max-width:400px; padding:24px;">
         <h2 style="margin-bottom:16px">Edit Profile</h2>
-        <form id="editProfileForm" style="display:grid; gap:12px;">
+        <form id="editProfileForm" style="display:grid; gap:16px;">
           <div>
-            <label for="editName" style="font-size:12px; color:var(--muted)">Full Name</label>
-            <input id="editName" type="text" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" required>
+            <label for="fullName" style="font-size:12px; color:var(--muted)">Full Name</label>
+            <input id="fullName" type="text" placeholder="Enter your name" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" required>
           </div>
           <div>
-            <label for="editPhone" style="font-size:12px; color:var(--muted)">Phone Number</label>
-            <input id="editPhone" type="tel" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" placeholder="+880...">
+            <label for="phoneNumber" style="font-size:12px; color:var(--muted)">Phone Number</label>
+            <input id="phoneNumber" type="text" placeholder="e.g. 017xxxxxxxx" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
           </div>
           <div>
-            <label for="editBloodGroup" style="font-size:12px; color:var(--muted)">Blood Group</label>
-            <select id="editBloodGroup" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" required>
+            <label for="bloodGroup" style="font-size:12px; color:var(--muted)">Blood Group</label>
+            <select id="bloodGroup" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;" required>
               <option value="">Select Blood Group</option>
               <option>A+</option><option>A-</option>
               <option>B+</option><option>B-</option>
@@ -133,8 +133,8 @@
             </select>
           </div>
           <div>
-            <label for="editLocation" style="font-size:12px; color:var(--muted)">Location (City/Area)</label>
-            <input id="editLocation" type="text" placeholder="e.g. Dhaka, Mirpur" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+            <label for="location" style="font-size:12px; color:var(--muted)">Location (City/Area)</label>
+            <input id="location" type="text" placeholder="e.g. Dhaka, Mirpur" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
           </div>
           <div>
             <label for="editProfileColor" style="font-size:12px; color:var(--muted)">Avatar Background Color</label>
@@ -147,9 +147,13 @@
             </div>
             <input type="hidden" id="editProfileColor" value="#CE1126">
           </div>
+          <div>
+            <label for="profileImageInput" style="font-size:12px; color:var(--muted)">Profile Picture</label>
+            <input id="profileImageInput" type="file" accept="image/*" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; font-size:12px;">
+          </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:8px;">
             <button type="button" id="cancelEditBtn" class="action-btn secondary" style="padding:10px;">Cancel</button>
-            <button type="submit" class="action-btn" style="padding:10px;">Save Changes</button>
+            <button type="button" id="saveProfileBtn" class="action-btn" style="padding:10px;">Save Changes</button>
           </div>
         </form>
       </div>
@@ -159,6 +163,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="./firebase-config.js"></script>
+  <script src="./cloudinary-config.js"></script>
   <script src="./dashboard.js"></script>
   <script>
     // Inline script for Donor Dashboard extra sections

@@ -62,8 +62,30 @@
           if (avatarEl && avatarTextEl) {
             var pColor = window.currentUserProfile.profileColor || "#CE1126";
             var pName = window.currentUserProfile.name || "User";
+            var pImg = window.currentUserProfile.profileImage;
+            
             avatarEl.style.backgroundColor = pColor;
-            avatarTextEl.textContent = pName.charAt(0).toUpperCase();
+            
+            if (pImg) {
+              avatarEl.innerHTML = `<img src="${pImg}" class="profile-avatar-img">`;
+            } else {
+              avatarEl.innerHTML = `<span id="dashboardAvatarText">${pName.charAt(0).toUpperCase()}</span>`;
+            }
+          }
+
+          // Render Profile Icon (top-left) in common navigation bars if present
+          var navProfile = document.getElementById("navProfile");
+          if(navProfile) {
+            var pColor = window.currentUserProfile.profileColor || "#CE1126";
+            var pName = window.currentUserProfile.name || "User";
+            var pImg = window.currentUserProfile.profileImage;
+            
+            navProfile.style.backgroundColor = pColor;
+            if (pImg) {
+              navProfile.innerHTML = `<img src="${pImg}" class="profile-avatar-img">`;
+            } else {
+              navProfile.textContent = pName.charAt(0).toUpperCase();
+            }
           }
 
           // Refresh donation status UI with actual profile data
@@ -139,34 +161,37 @@
   var editProfileForm = document.getElementById("editProfileForm");
 
   if (editProfileBtn && editProfileModal) {
+    console.log("[Dashboard] Edit Profile elements found, attaching listeners");
     // Color preset selection
-    const colorOptions = document.querySelectorAll(".color-option");
-    const colorInput = document.getElementById("editProfileColor");
+    var colorOptions = document.querySelectorAll(".color-option");
+    var colorInput = document.getElementById("editProfileColor");
     
-    colorOptions.forEach(opt => {
-      opt.addEventListener("click", () => {
-        colorOptions.forEach(o => o.classList.remove("selected"));
+    colorOptions.forEach(function(opt) {
+      opt.addEventListener("click", function() {
+        colorOptions.forEach(function(o) { o.classList.remove("selected"); });
         opt.classList.add("selected");
-        colorInput.value = opt.dataset.color;
+        if (colorInput) colorInput.value = opt.dataset.color;
       });
     });
 
     // Open Modal
     editProfileBtn.addEventListener("click", function () {
+      console.log("[Dashboard] Edit Profile button clicked");
       if (window.currentUserProfile) {
-        document.getElementById("editName").value = window.currentUserProfile.name || "";
-        document.getElementById("editBloodGroup").value = window.currentUserProfile.bloodGroup || "";
-        document.getElementById("editLocation").value = window.currentUserProfile.location || "";
-        document.getElementById("editPhone").value = window.currentUserProfile.phone || "";
+        document.getElementById("fullName").value = window.currentUserProfile.name || "";
+        document.getElementById("bloodGroup").value = window.currentUserProfile.bloodGroup || "";
+        document.getElementById("location").value = window.currentUserProfile.location || "";
+        document.getElementById("phoneNumber").value = window.currentUserProfile.phone || "";
         
-        const currentPColor = window.currentUserProfile.profileColor || "#CE1126";
-        colorInput.value = currentPColor;
-        colorOptions.forEach(opt => {
+        var currentPColor = window.currentUserProfile.profileColor || window.currentUserProfile.avatarColor || "#CE1126";
+        if (colorInput) colorInput.value = currentPColor;
+        colorOptions.forEach(function(opt) {
           if(opt.dataset.color === currentPColor) opt.classList.add("selected");
           else opt.classList.remove("selected");
         });
 
-        document.getElementById("editProfileLocked").checked = !!window.currentUserProfile.profileLocked;
+        var lockToggle = document.getElementById("editProfileLocked");
+        if (lockToggle) lockToggle.checked = !!window.currentUserProfile.profileLocked;
       }
       editProfileModal.style.display = "flex";
     });
@@ -176,70 +201,116 @@
       editProfileModal.style.display = "none";
     });
 
-    // Save Changes
-    editProfileForm.addEventListener("submit", async function (e) {
+    // --- NEW SAVE PROFILE LOGIC ---
+    function handleProfileUpdate(e) {
       e.preventDefault();
-      var user = auth.currentUser;
-      if (!user) return;
-
-      var newName = document.getElementById("editName").value.trim();
-      var newBloodGroup = document.getElementById("editBloodGroup").value;
-      var newLocation = document.getElementById("editLocation").value.trim();
-      var newPhone = document.getElementById("editPhone").value.trim();
-      var newColor = document.getElementById("editProfileColor").value;
-      var newLocked = document.getElementById("editProfileLocked").checked;
+      console.log("Save button clicked");
 
       try {
-        // TODO: integrate uploadImage here if profile picture upload is added to the modal
-
-        await db.collection("users").doc(user.uid).update({
-          name: newName,
-          bloodGroup: newBloodGroup,
-          location: newLocation,
-          phone: newPhone,
-          profileColor: newColor,
-          profileLocked: newLocked
-        });
-
-        // Update local state and UI immediately
-        window.currentUserProfile.name = newName;
-        window.currentUserProfile.bloodGroup = newBloodGroup;
-        window.currentUserProfile.location = newLocation;
-        window.currentUserProfile.phone = newPhone;
-        window.currentUserProfile.profileColor = newColor;
-        window.currentUserProfile.profileLocked = newLocked;
-
-        document.getElementById("userName").textContent = newName;
-        document.getElementById("userName_welcome").textContent = newName;
-        
-        // Update Avatar
-        var avatarEl = document.getElementById("dashboardAvatar");
-        var avatarTextEl = document.getElementById("dashboardAvatarText");
-        if (avatarEl && avatarTextEl) {
-          avatarEl.style.backgroundColor = newColor;
-          avatarTextEl.textContent = newName.charAt(0).toUpperCase();
+        const user = firebase.auth().currentUser;
+        if (!user) {
+          alert("User not logged in");
+          return;
         }
 
-        var displayBloodGroup = document.getElementById("displayBloodGroup");
-        var displayLocation = document.getElementById("displayLocation");
-        var displayPhone = document.getElementById("displayPhone");
-        var displayLockStatus = document.getElementById("displayLockStatus");
+        const name = document.getElementById("fullName").value;
+        const phone = document.getElementById("phoneNumber").value;
+        const blood = document.getElementById("bloodGroup").value;
+        const location = document.getElementById("location").value;
+        const file = document.getElementById("profileImageInput").files[0];
+        const avatarColor = document.getElementById("editProfileColor").value;
 
-        if (displayBloodGroup) displayBloodGroup.textContent = newBloodGroup || "Not set";
-        if (displayLocation) displayLocation.textContent = newLocation || "Not set";
-        if (displayPhone) displayPhone.textContent = newPhone || "Not set";
-        if (displayLockStatus) {
-          displayLockStatus.textContent = newLocked ? "Locked 🔒" : "Public 🔓";
-          displayLockStatus.style.color = newLocked ? "#CE1126" : "green";
+        console.log("Form data:", name, phone, blood, location);
+
+        let photoURL = null;
+
+        const saveBtn = document.getElementById("saveProfileBtn");
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = "Saving...";
         }
 
-        alert("Profile updated successfully!");
-        editProfileModal.style.display = "none";
-      } catch (err) {
-        console.error("Error updating profile:", err);
-        alert("Failed to update profile: " + err.message);
+        // IMAGE UPLOAD (OPTIONAL) 
+        if (file) {
+          console.log("Uploading image...");
+
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("upload_preset", cloudinaryConfig.uploadPreset);
+
+          fetch(`https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`, {
+            method: "POST",
+            body: formData
+          })
+          .then(res => res.json())
+          .then(data => {
+            photoURL = data.secure_url;
+            console.log("Image uploaded:", photoURL);
+            updateFirestore(user.uid, name, phone, blood, location, avatarColor, photoURL);
+          })
+          .catch(err => {
+            console.error("Image upload failed", err);
+            alert("Image upload failed");
+            if (saveBtn) {
+              saveBtn.disabled = false;
+              saveBtn.textContent = "Save Changes";
+            }
+          });
+
+        } else {
+          updateFirestore(user.uid, name, phone, blood, location, avatarColor, null);
+        }
+
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Something went wrong");
       }
-    });
+    }
+
+    function updateFirestore(uid, name, phone, blood, location, avatarColor, photoURL) {
+      console.log("Updating Firestore...");
+      const updateData = {
+        name: name,
+        phone: phone,
+        bloodGroup: blood,
+        location: location,
+        avatarColor: avatarColor,
+        profileColor: avatarColor // Backward compatibility
+      };
+
+      if (photoURL) {
+        updateData.photoURL = photoURL;
+        updateData.profileImage = photoURL; // Backward compatibility
+      }
+
+      firebase.firestore().collection("users").doc(uid)
+        .update(updateData)
+        .then(() => {
+          console.log("Profile updated");
+          alert("Profile updated successfully");
+
+          // CLOSE MODAL 
+          document.getElementById("editProfileModal").style.display = "none";
+
+          // OPTIONAL: reload UI 
+          location.reload();
+        })
+        .catch(err => {
+          console.error("Firestore error:", err);
+          alert("Failed to save data");
+          const saveBtn = document.getElementById("saveProfileBtn");
+          if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Changes";
+          }
+        });
+    }
+
+    // Attach click listener to the new button ID
+    const saveBtn = document.getElementById("saveProfileBtn");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", handleProfileUpdate);
+    }
   }
 
   // Task 4: Access Requests Management (Donor Only)
