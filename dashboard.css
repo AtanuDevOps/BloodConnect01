@@ -466,7 +466,162 @@ body {
   }
 }
 
-/* Profile Page Modern UI */
+/* Feed Tabs */
+.feed-tabs {
+  display: flex;
+  background: #fff;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Campaign Post Styling */
+.campaign-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.campaign-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.campaign-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.campaign-author-info {
+  flex: 1;
+}
+
+.campaign-author-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.campaign-meta {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+}
+
+.campaign-content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.campaign-image {
+  width: 100%;
+  border-radius: 12px;
+  margin-top: 4px;
+}
+
+.campaign-actions {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: flex;
+  gap: 20px;
+}
+
+.campaign-action-btn {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.campaign-action-btn:hover {
+  color: var(--primary);
+}
+
+.campaign-comments-section {
+  margin-top: 4px;
+}
+
+.comment-input-group {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.comment-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.comment-post-btn:hover {
+  background: var(--primary-hover);
+}
+
+.comments-container {
+  margin-top: 10px;
+}
+
+.comment-item {
+  background: #f3f4f6;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.comment-name {
+  font-weight: 600;
+  color: #111;
+}
+
+.comment-text {
+  color: #444;
+}
 .profile-page {
   background: #fdfdfd;
   background-image: radial-gradient(circle at 0% 0%, rgba(206,17,38,0.03) 0%, transparent 30%),

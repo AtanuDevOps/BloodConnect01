@@ -7,6 +7,10 @@
   let currentUserProfile = null;
 
   const feedContainer = document.getElementById("requestsFeed");
+  const campaignsFeed = document.getElementById("campaignsFeed");
+  const tabEmergencies = document.getElementById("tabEmergencies");
+  const tabCampaigns = document.getElementById("tabCampaigns");
+
   const makeRequestBtn = document.getElementById("makeRequestBtn");
   const requestModal = document.getElementById("requestModal");
   const requestForm = document.getElementById("requestForm");
@@ -80,6 +84,23 @@
       if (e.target === requestModal) requestModal.style.display = "none";
       if (e.target === responseModal) responseModal.style.display = "none";
     };
+
+    // Tab Switching
+    tabEmergencies.addEventListener("click", () => {
+      tabEmergencies.classList.add("active");
+      tabCampaigns.classList.remove("active");
+      feedContainer.style.display = "block";
+      campaignsFeed.style.display = "none";
+      loadRequests();
+    });
+
+    tabCampaigns.addEventListener("click", () => {
+      tabCampaigns.classList.add("active");
+      tabEmergencies.classList.remove("active");
+      campaignsFeed.style.display = "block";
+      feedContainer.style.display = "none";
+      loadCampaigns();
+    });
   }
 
   // 3. Load Requests
@@ -106,6 +127,174 @@
       console.error("Error loading requests:", err);
       feedContainer.innerHTML = '<div class="no-results">Failed to load requests.</div>';
     }
+  }
+
+  // 3.5 Load Campaigns
+  let campaignListener = null;
+  const commentListeners = {}; // Track comment listeners to avoid duplicates
+
+  function loadCampaigns() {
+    if (campaignListener) return;
+
+    campaignsFeed.innerHTML = '<div class="no-results">Loading campaigns...</div>';
+    
+    campaignListener = db.collection("foundation_campaign_posts")
+      .orderBy("createdAt", "desc")
+      .onSnapshot((snapshot) => {
+        if (snapshot.empty) {
+          campaignsFeed.innerHTML = '<div class="no-results">No campaigns yet.</div>';
+          return;
+        }
+
+        const campaigns = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderCampaigns(campaigns);
+      }, (err) => {
+        console.error("Error loading campaigns:", err);
+        campaignsFeed.innerHTML = '<div class="no-results">Failed to load campaigns.</div>';
+      });
+  }
+
+  function renderCampaigns(campaigns) {
+    campaignsFeed.innerHTML = campaigns.map(camp => {
+      const date = camp.createdAt ? new Date(camp.createdAt.seconds * 1000) : new Date();
+      const timeStr = date.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + 
+                      date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const avatarInitial = (camp.foundationName || camp.authorName || "F").charAt(0).toUpperCase();
+      const imageUrl = camp.imageURL || camp.imageUrl || "";
+
+      const likes = camp.likes || [];
+      const hasLiked = currentUser ? likes.includes(currentUser.uid) : false;
+
+      return `
+        <div class="campaign-card" data-id="${camp.id}">
+          <div class="campaign-header">
+            <div class="campaign-avatar">${avatarInitial}</div>
+            <div class="campaign-author-info">
+              <div class="campaign-author-name">${camp.foundationName || camp.authorName || "Foundation"}</div>
+              <div class="campaign-meta">
+                <span>${camp.location || "Global"}</span>
+                <span>•</span>
+                <span>${timeStr}</span>
+              </div>
+            </div>
+          </div>
+          <div class="campaign-content">
+            ${escapeHtml(camp.caption || camp.contentText || "")}
+          </div>
+          ${imageUrl ? `<img src="${imageUrl}" class="campaign-image" alt="Campaign">` : ""}
+          
+          <div class="campaign-actions">
+            <button onclick="toggleLike('${camp.id}', ${hasLiked})" class="campaign-action-btn ${hasLiked ? 'active' : ''}" style="${hasLiked ? 'color: var(--primary); font-weight: 700;' : ''}">
+              <i class="${hasLiked ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
+              <span>${likes.length}</span>
+            </button>
+            <button class="campaign-action-btn">
+              <i class="fa-regular fa-comment"></i>
+              <span>${camp.commentCount || 0}</span>
+            </button>
+          </div>
+
+          <div class="comment-input-group">
+            <input type="text" id="input-${camp.id}" class="comment-input" placeholder="Write a comment...">
+            <button onclick="postComment('${camp.id}')" class="comment-post-btn">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+
+          <div id="comments-${camp.id}" class="comments-container"></div>
+        </div>
+      `;
+    }).join("");
+
+    // Start listening for comments for each campaign after DOM is updated
+    setTimeout(() => {
+      campaigns.forEach(camp => loadComments(camp.id));
+    }, 0);
+  }
+
+  // Like Logic
+  window.toggleLike = async function(postId, alreadyLiked) {
+    if (!currentUser) return;
+    const postRef = db.collection("foundation_campaign_posts").doc(postId);
+    try {
+      if (alreadyLiked) {
+        await postRef.update({
+          likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+        });
+      } else {
+        await postRef.update({
+          likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+        });
+      }
+    } catch (e) {
+      console.error("Like error", e);
+    }
+  };
+
+  // Comment Logic
+  window.postComment = async function(postId) {
+    if (!currentUser) return;
+    const input = document.getElementById(`input-${postId}`);
+    const text = (input.value || "").trim();
+    if (!text) return;
+
+    input.disabled = true;
+    try {
+      const commentData = {
+        userId: currentUser.uid,
+        userName: currentUserProfile.name || "User",
+        text: text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      await db.collection("foundation_campaign_posts").doc(postId)
+        .collection("comments").add(commentData);
+
+      // Update comment count on post
+      await db.collection("foundation_campaign_posts").doc(postId).update({
+        commentCount: firebase.firestore.FieldValue.increment(1)
+      });
+
+      input.value = "";
+    } catch (e) {
+      console.error("Comment error", e);
+      alert("Failed to post comment.");
+    } finally {
+      input.disabled = false;
+    }
+  };
+
+  function loadComments(postId) {
+    // Unsubscribe from previous listener if exists to avoid memory leaks and ensure fresh render
+    if (commentListeners[postId]) {
+      commentListeners[postId]();
+    }
+
+    const commentsContainer = document.getElementById(`comments-${postId}`);
+    if (!commentsContainer) return;
+
+    commentListeners[postId] = db.collection("foundation_campaign_posts")
+      .doc(postId).collection("comments")
+      .orderBy("createdAt", "asc")
+      .onSnapshot(snap => {
+        const container = document.getElementById(`comments-${postId}`);
+        if (!container) return;
+
+        container.innerHTML = "";
+        
+        snap.forEach(doc => {
+          const data = doc.data();
+          const commentEl = document.createElement("div");
+          commentEl.className = "comment-item";
+          
+          commentEl.innerHTML = `
+            <div class="comment-name">${escapeHtml(data.userName || "User")}</div>
+            <div class="comment-text">${escapeHtml(data.text || "")}</div>
+          `;
+          container.appendChild(commentEl);
+        });
+      });
   }
 
   // 4. Render Requests

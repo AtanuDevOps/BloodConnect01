@@ -13,7 +13,7 @@
       <h1 style="color: var(--primary); font-weight: 700; margin: 0; font-size: 32px;">BloodConnect</h1>
     </div>
 
-    <div style="display: flex; gap: 12px; margin-bottom: 30px; align-items: stretch;">
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; align-items: stretch;">
       <button id="makeRequestBtn" class="action-btn" style="flex: 1; border-radius: 12px; padding: 16px; font-size: 18px; justify-content: flex-start; box-shadow: 0 4px 15px rgba(206,17,38,0.3);">
         <i class="fa-solid fa-plus"></i>
         <span>Make blood request</span>
@@ -23,9 +23,20 @@
       </button>
     </div>
 
-    <!-- Requests Feed -->
-    <div id="requestsFeed">
+    <!-- Feed Tabs -->
+    <div class="feed-tabs">
+      <button id="tabEmergencies" class="tab-btn active">Emergencies</button>
+      <button id="tabCampaigns" class="tab-btn">Campaigns</button>
+    </div>
+
+    <!-- Emergencies Feed -->
+    <div id="requestsFeed" class="feed-container">
       <div class="no-results">Loading requests...</div>
+    </div>
+
+    <!-- Campaigns Feed -->
+    <div id="campaignsFeed" class="feed-container" style="display: none;">
+      <div class="no-results">Loading campaigns...</div>
     </div>
   </div>
 
