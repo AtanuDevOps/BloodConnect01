@@ -3,215 +3,127 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Foundation Dashboard · BloodConnect</title>
+  <title>Foundation Profile · BloodConnect</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="./dashboard.css">
-  <style>
-    .info-card { padding:16px; border:1px solid var(--border); border-radius:12px; background:#fff; margin-bottom:16px; }
-    .grid-3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; }
-    @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr; } }
-    .placeholder-card { padding:16px; border:1px solid var(--border); border-radius:12px; background:#fff; }
-    .muted-sm { font-size:13px; color:var(--muted); }
-  </style>
+  <link rel="stylesheet" href="./foundation-profile.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="./firebase-config.js"></script>
-  <script>
-    (function(){
-      function getParam(name) {
-        var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
-        return m && decodeURIComponent(m[1].replace(/\+/g, ' '));
-      }
-      function tsToDate(ts) {
-        if (!ts) return null;
-        if (typeof ts.toMillis === "function") return new Date(ts.toMillis());
-        if (typeof ts.seconds === "number") return new Date(ts.seconds * 1000);
-        return null;
-      }
-      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
-      var auth = firebase.auth(app);
-      var db = firebase.firestore(app);
-      var fid = getParam('foundationId');
-      auth.onAuthStateChanged(async function(user){
-        if(!user){ window.location.href = "index.html"; return; }
-        if(!fid){ document.getElementById('fdName').textContent = "Invalid Foundation"; return; }
-        try {
-          var doc = await db.collection("foundation_requests").doc(fid).get();
-          if(!doc.exists){
-            document.getElementById('fdName').textContent = "Foundation Not Found";
-            return;
-          }
-          var d = doc.data();
-          document.getElementById('fdName').textContent = d.name || "Foundation";
-          document.getElementById('fdLocation').textContent = d.location || "Location not set";
-          document.getElementById('fdDescription').textContent = d.description || "No description";
-          var created = tsToDate(d.createdAt);
-          document.getElementById('fdCreated').textContent = created ? created.toLocaleDateString() : "—";
-          loadMembersCount();
-          loadJoinRequests(user.uid, d.ownerId);
-          startChatUnreadListener(user.uid);
-        } catch(e){
-          document.getElementById('fdName').textContent = "Error loading Foundation";
-        }
-      });
-      window.addEventListener('DOMContentLoaded', function(){
-        document.getElementById('backBtn').addEventListener('click', function(){
-          window.location.href = 'foundation.html';
-        });
-        var card = document.getElementById('campaignPostsCard');
-        if (card) {
-          card.addEventListener('click', function(){
-            window.location.href = 'foundation-campaigns.html?foundationId=' + encodeURIComponent(fid || '');
-          });
-        }
-        var chatBtn = document.getElementById('chatBtn');
-        if (chatBtn) {
-          chatBtn.addEventListener('click', function(){
-            window.location.href = 'foundation-chat.html?foundationId=' + encodeURIComponent(fid || '');
-          });
-        }
-      });
-      async function loadMembersCount(){
-        try{
-          var snap = await db.collection("foundation_members").where("foundationId","==",fid).get();
-          document.getElementById("membersCount").textContent = snap.size;
-        }catch(e){
-          document.getElementById("membersCount").textContent = "0";
-        }
-      }
-      async function loadJoinRequests(currentUid, ownerId){
-        try{
-          if(currentUid !== ownerId) return;
-          var snap = await db.collection("foundation_join_requests")
-            .where("foundationId","==",fid)
-            .where("ownerId","==",currentUid)
-            .where("status","==","pending")
-            .get();
-          var section = document.getElementById("joinRequestsSection");
-          var list = document.getElementById("joinRequestsList");
-          if(snap.empty){ section.style.display = "none"; return; }
-          section.style.display = "block";
-          list.innerHTML = snap.docs.map(function(doc){
-            var r = doc.data();
-            var dateStr = r.createdAt && r.createdAt.seconds ? new Date(r.createdAt.seconds * 1000).toLocaleDateString() : "—";
-            return '<div class="placeholder-card" style="display:flex; align-items:center; justify-content:space-between;">'
-              + '<div><strong>'+ (r.donorName||"Donor") +'</strong><div class="muted-sm">Requested: '+ dateStr +'</div></div>'
-              + '<button class="action-btn" onclick="approveJoinRequest(\''+ doc.id +'\', \''+ (r.donorId||'') +'\', \''+ (r.donorName||'Donor') +'\')">Approve</button>'
-              + '</div>';
-          }).join("");
-        }catch(e){
-          // silent
-        }
-      }
-      window.approveJoinRequest = async function(reqId, donorId, donorName){
-        try{
-          await db.collection("foundation_join_requests").doc(reqId).update({ status: "approved" });
-          var dup = await db.collection("foundation_members")
-            .where("foundationId","==",fid)
-            .where("memberId","==",donorId)
-            .get();
-          if(dup.empty){
-            var fdName = document.getElementById('fdName').textContent || "Foundation";
-            await db.collection("foundation_members").add({
-              foundationId: fid,
-              foundationName: fdName,
-              memberId: donorId,
-              memberName: donorName,
-              joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          }
-          loadMembersCount();
-          // reload pending list
-          var ownerIdText = null;
-          try {
-            var fdDoc = await db.collection("foundation_requests").doc(fid).get();
-            ownerIdText = fdDoc.exists ? (fdDoc.data().ownerId || null) : null;
-          } catch(e){}
-          var user = firebase.auth().currentUser;
-          loadJoinRequests(user && user.uid, ownerIdText);
-          alert("Join request approved.");
-        }catch(e){
-          alert("Failed to approve request.");
-        }
-      };
-      function startChatUnreadListener(uid){
-        try{
-          db.collection("foundation_chats")
-            .where("foundationId","==",fid)
-            .orderBy("createdAt","asc")
-            .onSnapshot(function(snap){
-              var count = 0;
-              snap.forEach(function(doc){
-                var msg = doc.data();
-                var readBy = Array.isArray(msg.readBy) ? msg.readBy : [];
-                if (readBy.indexOf(uid) === -1) count++;
-              });
-              var badge = document.getElementById("chatBadge");
-              if (!badge) return;
-              if (count <= 0) {
-                badge.style.display = "none";
-              } else {
-                badge.style.display = "inline-block";
-                badge.textContent = count > 9 ? "9+" : String(count);
-              }
-            }, function(err){
-              // silent on error
-            });
-        }catch(e){}
-      }
-    })();
-  </script>
+  <script src="./cloudinary-config.js"></script>
 </head>
-<body>
-  <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
-    <button id="backBtn" class="logout-btn" style="border:none; background:transparent; padding:0; color:var(--muted);">
-      <i class="fa-solid fa-arrow-left"></i> Back to Foundation
-    </button>
-    <div class="brand" style="text-align:center;">
-      <i class="fa-solid fa-droplet"></i>
-      <span>BloodConnect</span>
-    </div>
-    <div style="display:flex; align-items:center; gap:8px;">
-      <button id="chatBtn" class="action-btn" style="position:relative; padding:6px 10px; font-size:12px; border-radius:999px;">
-        <i class="fa-solid fa-message"></i> Chat
-        <span id="chatBadge" style="display:none; position:absolute; top:-6px; right:-6px; background:#CE1126; color:#fff; border-radius:999px; font-size:11px; padding:2px 6px;">0</span>
+<body class="foundation-profile-page">
+  <!-- Hidden File Inputs -->
+  <input type="file" id="coverUpload" accept="image/*" style="display:none;">
+  <input type="file" id="profileUpload" accept="image/*" style="display:none;">
+
+  <div class="foundation-header">
+    <div class="cover-container">
+      <img id="coverImg" src="https://via.placeholder.com/1200x400?text=Foundation+Cover" class="cover-image" alt="Cover">
+      <button id="editCoverBtn" class="edit-cover-btn" style="display:none;">
+        <i class="fa-solid fa-camera"></i> Edit Cover
       </button>
     </div>
-  </nav>
-
-  <main class="container">
-    <div class="welcome" style="margin-bottom: 10px;">
-      <h1 id="fdName">Foundation</h1>
-      <p id="fdLocation" class="muted">—</p>
-      <div class="muted-sm" style="margin-top:6px;"><i class="fa-solid fa-users"></i> Members: <span id="membersCount">0</span></div>
+    <div class="profile-img-container">
+      <img id="profileImg" src="https://via.placeholder.com/150?text=F" class="profile-image" alt="Profile">
+      <div id="editProfileImgBtn" class="edit-profile-img-btn" style="display:none;">
+        <i class="fa-solid fa-camera"></i>
+      </div>
     </div>
+    <div class="foundation-name-section">
+      <h1 id="foundationName">Loading...</h1>
+      <p id="foundationLocation" class="muted" style="font-size:14px; margin-top:4px;">Location Loading...</p>
+    </div>
+  </div>
 
-    <section class="info-card">
-      <div style="font-weight:700; margin-bottom:6px;">About</div>
-      <div id="fdDescription" class="muted-sm">—</div>
-      <div style="margin-top:10px;" class="muted-sm"><i class="fa-solid fa-calendar"></i> Created: <span id="fdCreated">—</span></div>
-    </section>
+  <div class="stats-row">
+    <div class="stat-item-card">
+      <i class="fa-solid fa-users"></i>
+      <span id="membersCount" class="stat-item-value">0</span>
+      <span class="stat-item-label">Foundation Members</span>
+    </div>
+    <div class="stat-item-card">
+      <i class="fa-solid fa-phone"></i>
+      <span class="stat-item-value">Contact</span>
+      <span class="stat-item-label">Contact Info</span>
+    </div>
+    <div class="stat-item-card">
+      <i class="fa-solid fa-hand-holding-droplet"></i>
+      <span id="availableDonorsCount" class="stat-item-value">0</span>
+      <span class="stat-item-label">Available Donors</span>
+    </div>
+  </div>
 
-    <section class="grid-3">
-      <div class="placeholder-card" id="campaignPostsCard" style="cursor:pointer;">
-        <div style="font-weight:700; margin-bottom:6px;">Campaign Posts</div>
-        <div class="muted-sm">No campaigns yet.</div>
+  <div id="adminPostSection" class="create-post-section" style="display:none;">
+    <div id="adminAvatar" class="create-post-avatar">F</div>
+    <div id="postTrigger" class="create-post-trigger">What's on your mind?</div>
+  </div>
+
+  <div class="info-cards-container">
+    <div class="info-small-card">
+      <div class="label">LIFE SAVED</div>
+      <div id="totalLivesSaved" class="value">0</div>
+    </div>
+    <div class="info-small-card">
+      <div class="label">BLOOD GROUPS</div>
+      <div class="blood-group-list">
+        <span class="blood-mini-tag">A+</span><span class="blood-mini-tag">B+</span>
+        <span class="blood-mini-tag">O+</span><span class="blood-mini-tag">AB+</span>
+        <span class="blood-mini-tag">A-</span><span class="blood-mini-tag">B-</span>
+        <span class="blood-mini-tag">O-</span><span class="blood-mini-tag">AB-</span>
       </div>
-      <div class="placeholder-card">
-        <div style="font-weight:700; margin-bottom:6px;">Members</div>
-        <div class="muted-sm">No members yet.</div>
-      </div>
-      <div class="placeholder-card">
-        <div style="font-weight:700; margin-bottom:6px;">Admin Controls</div>
-        <div class="muted-sm">Admin tools coming soon.</div>
-      </div>
-    </section>
-    <section class="info-card" id="joinRequestsSection" style="display:none;">
-      <div style="font-weight:700; margin-bottom:6px;">Join Requests</div>
-      <div id="joinRequestsList" style="display:grid; gap:8px;"></div>
-    </section>
-  </main>
+    </div>
+    <div class="info-small-card">
+      <div class="label">TOP 10</div>
+      <div class="value">#—</div>
+    </div>
+  </div>
+
+  <div class="foundation-actions-grid">
+    <div id="manageBtn" class="action-icon-btn">
+      <i class="fa-solid fa-gear"></i>
+      <span>Manage</span>
+    </div>
+    <div id="chatBtn" class="action-icon-btn">
+      <i class="fa-solid fa-message"></i>
+      <span>Chat</span>
+    </div>
+    <div id="historyBtn" class="action-icon-btn">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+      <span>History</span>
+    </div>
+    <div id="leaveBtn" class="action-icon-btn">
+      <i class="fa-solid fa-right-from-bracket"></i>
+      <span>Leave</span>
+    </div>
+  </div>
+
+  <!-- Campaign Feed Container -->
+  <div id="campaignsFeed" style="padding:0 16px 110px;">
+    <!-- Posts will be injected here -->
+  </div>
+
+  <!-- Campaign Creation Modal (Simplified) -->
+  <div id="campaignModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h3>Create Campaign</h3>
+      <form id="campaignForm">
+        <select id="campaignType" class="input-field" required>
+          <option value="">Campaign Type</option>
+          <option value="Urgent">Urgent</option>
+          <option value="Event">Event</option>
+          <option value="Awareness">Awareness</option>
+        </select>
+        <textarea id="campaignCaption" class="input-field" placeholder="Campaign description..." rows="3" required></textarea>
+        <input id="campaignImage" type="file" accept="image/*" class="input-field">
+        <div style="display:flex; gap:12px; margin-top:12px;">
+          <button type="button" id="closeModal" class="action-btn secondary" style="flex:1">Cancel</button>
+          <button type="submit" id="postBtn" class="action-btn" style="flex:1">Post</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Bottom Navigation -->
   <nav class="bottom-nav">
@@ -224,7 +136,7 @@
     <a href="foundation.html" class="nav-item active">
       <i class="fa-solid fa-users"></i>
     </a>
-    <a href="#" class="nav-item">
+    <a href="foundation-chat.html" class="nav-item">
       <i class="fa-solid fa-message"></i>
     </a>
     <a href="notifications.html" class="nav-item">
@@ -234,5 +146,7 @@
       <i class="fa-solid fa-user"></i>
     </a>
   </nav>
+
+  <script src="./js/foundation-profile.js"></script>
 </body>
 </html>
