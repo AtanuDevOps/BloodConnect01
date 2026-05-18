@@ -5,11 +5,15 @@
 
   let currentUser = null;
   let currentUserProfile = null;
+  let currentPostData = null;
+  let currentPostId = null;
+  let commentsUnsubscribe = null;
 
   const feedContainer = document.getElementById("requestsFeed");
   const campaignsFeed = document.getElementById("campaignsFeed");
   const tabEmergencies = document.getElementById("tabEmergencies");
   const tabCampaigns = document.getElementById("tabCampaigns");
+  const commentModal = document.getElementById("commentModal");
 
   const makeRequestBtn = document.getElementById("makeRequestBtn");
   const requestModal = document.getElementById("requestModal");
@@ -19,6 +23,13 @@
   const profileLink = document.getElementById("profileLink");
   const navProfile = document.getElementById("navProfile");
   const foundationBtn = document.getElementById("foundationBtn");
+
+  function tsToDate(ts) {
+    if (!ts) return null;
+    if (typeof ts.toMillis === "function") return new Date(ts.toMillis());
+    if (typeof ts.seconds === "number") return new Date(ts.seconds * 1000);
+    return null;
+  }
 
   // 1. Auth Guard
   auth.onAuthStateChanged(async (user) => {
@@ -83,6 +94,7 @@
     window.onclick = (e) => {
       if (e.target === requestModal) requestModal.style.display = "none";
       if (e.target === responseModal) responseModal.style.display = "none";
+      if (e.target === commentModal) closeCommentModal();
     };
 
     // Tab Switching
@@ -131,7 +143,6 @@
 
   // 3.5 Load Campaigns
   let campaignListener = null;
-  const commentListeners = {}; // Track comment listeners to avoid duplicates
 
   function loadCampaigns() {
     if (campaignListener) return;
@@ -189,28 +200,14 @@
               <i class="${hasLiked ? 'fa-solid' : 'fa-regular'} fa-heart"></i>
               <span>${likes.length}</span>
             </button>
-            <button class="campaign-action-btn">
+            <button class="campaign-action-btn" onclick="openCommentModal('${camp.id}')">
               <i class="fa-regular fa-comment"></i>
               <span>${camp.commentCount || 0}</span>
             </button>
           </div>
-
-          <div class="comment-input-group">
-            <input type="text" id="input-${camp.id}" class="comment-input" placeholder="Write a comment...">
-            <button onclick="postComment('${camp.id}')" class="comment-post-btn">
-              <i class="fa-solid fa-paper-plane"></i>
-            </button>
-          </div>
-
-          <div id="comments-${camp.id}" class="comments-container"></div>
         </div>
       `;
     }).join("");
-
-    // Start listening for comments for each campaign after DOM is updated
-    setTimeout(() => {
-      campaigns.forEach(camp => loadComments(camp.id));
-    }, 0);
   }
 
   // Like Logic
@@ -232,70 +229,91 @@
     }
   };
 
-  // Comment Logic
-  window.postComment = async function(postId) {
-    if (!currentUser) return;
-    const input = document.getElementById(`input-${postId}`);
-    const text = (input.value || "").trim();
-    if (!text) return;
-
-    input.disabled = true;
+  // Comment Modal Functions
+  window.openCommentModal = async function(postId) {
+    currentPostId = postId;
     try {
-      const commentData = {
-        userId: currentUser.uid,
-        userName: currentUserProfile.name || "User",
-        text: text,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      await db.collection("foundation_campaign_posts").doc(postId)
-        .collection("comments").add(commentData);
-
-      // Update comment count on post
-      await db.collection("foundation_campaign_posts").doc(postId).update({
-        commentCount: firebase.firestore.FieldValue.increment(1)
-      });
-
-      input.value = "";
-    } catch (e) {
-      console.error("Comment error", e);
-      alert("Failed to post comment.");
-    } finally {
-      input.disabled = false;
+      var postDoc = await db.collection("foundation_campaign_posts").doc(postId).get();
+      if(!postDoc.exists) return;
+      currentPostData = postDoc.data();
+      var previewName = document.getElementById("commentModalPreviewName");
+      var previewCaption = document.getElementById("commentModalPreviewCaption");
+      var previewImage = document.getElementById("commentModalPreviewImage");
+      previewName.textContent = currentPostData.foundationName || "Foundation";
+      previewCaption.textContent = currentPostData.caption || "";
+      if(currentPostData.imageURL) {
+        previewImage.src = currentPostData.imageURL;
+        previewImage.classList.remove("hidden");
+      } else {
+        previewImage.classList.add("hidden");
+      }
+      commentModal.classList.add("active");
+      loadCommentsForModal(postId);
+    } catch(e) {
+      console.error(e);
     }
   };
-
-  function loadComments(postId) {
-    // Unsubscribe from previous listener if exists to avoid memory leaks and ensure fresh render
-    if (commentListeners[postId]) {
-      commentListeners[postId]();
+  
+  window.closeCommentModal = function() {
+    commentModal.classList.remove("active");
+    if(commentsUnsubscribe) {
+      commentsUnsubscribe();
+      commentsUnsubscribe = null;
     }
-
-    const commentsContainer = document.getElementById(`comments-${postId}`);
-    if (!commentsContainer) return;
-
-    commentListeners[postId] = db.collection("foundation_campaign_posts")
-      .doc(postId).collection("comments")
-      .orderBy("createdAt", "asc")
-      .onSnapshot(snap => {
-        const container = document.getElementById(`comments-${postId}`);
-        if (!container) return;
-
-        container.innerHTML = "";
-        
-        snap.forEach(doc => {
-          const data = doc.data();
-          const commentEl = document.createElement("div");
-          commentEl.className = "comment-item";
-          
-          commentEl.innerHTML = `
-            <div class="comment-name">${escapeHtml(data.userName || "User")}</div>
-            <div class="comment-text">${escapeHtml(data.text || "")}</div>
-          `;
-          container.appendChild(commentEl);
-        });
+    document.getElementById("commentModalInput").value = "";
+  };
+  
+  function loadCommentsForModal(postId) {
+    var listEl = document.getElementById("commentsList");
+    if(commentsUnsubscribe) {
+      commentsUnsubscribe();
+    }
+    commentsUnsubscribe = db.collection("foundation_post_comments")
+      .where("postId","==",postId)
+      .orderBy("createdAt","desc")
+      .onSnapshot(function(snap){
+        if(snap.empty){ 
+          listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #888;">No comments yet. Be the first!</div>'; 
+          return; 
+        }
+        listEl.innerHTML = snap.docs.map(function(d){
+          var c = d.data();
+          var dt = tsToDate(c.createdAt);
+          var dateStr = dt ? dt.toLocaleString() : "Just now";
+          var initials = (c.userName || "U").charAt(0).toUpperCase();
+          return '<div class="comment-item">'
+            + '<div class="comment-avatar">'+ escapeHtml(initials) +'</div>'
+            + '<div class="comment-content">'
+            + '<div class="comment-author">'+ escapeHtml(c.userName||"User") +'</div>'
+            + '<div class="comment-text">'+ escapeHtml(c.commentText||"") +'</div>'
+            + '<div class="comment-time">'+ dateStr +'</div>'
+            + '</div>'
+            + '</div>';
+        }).join("");
       });
   }
+  
+  window.submitComment = async function(){
+    if(!currentUser || !currentPostId) return;
+    try{
+      var input = document.getElementById("commentModalInput");
+      var text = (input.value||"").trim();
+      if(!text) return;
+      var name = currentUserProfile.name || currentUser.displayName || "";
+      var pRef = db.collection("foundation_campaign_posts").doc(currentPostId);
+      await db.collection("foundation_post_comments").add({
+        postId: currentPostId,
+        userId: currentUser.uid,
+        userName: name,
+        commentText: text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await pRef.update({ commentCount: firebase.firestore.FieldValue.increment(1) });
+      input.value = "";
+    }catch(e){
+      alert("Failed to comment.");
+    }
+  };
 
   // 4. Render Requests
   function renderRequests(requests) {

@@ -7,6 +7,117 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="./dashboard.css">
   <link rel="stylesheet" href="./foundation-profile.css">
+  <style>
+    .hidden { display:none; }
+    /* Comment Modal Styles */
+    .comment-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .comment-modal.active { display: flex; align-items: flex-end; justify-content: center; }
+    .comment-modal-content {
+      width: 100%;
+      max-height: 85vh;
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s ease-out;
+    }
+    @media (min-width: 768px) {
+      .comment-modal.active { align-items: center; }
+      .comment-modal-content {
+        max-width: 560px;
+        max-height: 80vh;
+        border-radius: 16px;
+      }
+    }
+    .comment-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .comment-modal-title { font-weight: 600; font-size: 16px; }
+    .comment-modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #888;
+      padding: 4px;
+    }
+    .comment-modal-preview { padding: 12px 16px; border-bottom: 1px solid #e0e0e0; }
+    .comment-modal-preview .preview-header { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+    .comment-modal-preview .preview-caption { font-size: 14px; color: #333; }
+    .comment-modal-preview .preview-image { width: 100%; max-height: 120px; object-fit: cover; border-radius: 8px; margin-top: 8px; }
+    .comments-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .comment-item {
+      display: flex;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .comment-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #CE1126, #ff6b6b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .comment-content { flex: 1; }
+    .comment-author { font-weight: 600; margin-bottom: 2px; }
+    .comment-text { color: #444; }
+    .comment-time { font-size: 11px; color: #888; margin-top: 4px; }
+    .comment-input-area {
+      padding: 12px 16px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .comment-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #e0e0e0;
+      border-radius: 999px;
+      font-size: 14px;
+      outline: none;
+    }
+    .comment-input:focus { border-color: #CE1126; }
+    .comment-send-btn {
+      background: #CE1126;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .comment-send-btn:hover { background: #a80f20; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -122,6 +233,30 @@
           <button type="submit" id="postBtn" class="action-btn" style="flex:1">Post</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Comment Modal -->
+  <div id="commentModal" class="comment-modal">
+    <div class="comment-modal-content">
+      <div class="comment-modal-header">
+        <div class="comment-modal-title">Comments</div>
+        <button class="comment-modal-close" onclick="closeCommentModal()"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div class="comment-modal-preview">
+        <div class="preview-header">
+          <strong id="commentModalPreviewName"></strong>
+        </div>
+        <div id="commentModalPreviewCaption" class="preview-caption"></div>
+        <img id="commentModalPreviewImage" class="preview-image hidden" alt="post preview">
+      </div>
+      <div id="commentsList" class="comments-list">
+        <div style="text-align:center; padding: 20px; color: #888;">Loading comments...</div>
+      </div>
+      <div class="comment-input-area">
+        <input id="commentModalInput" class="comment-input" type="text" maxlength="500" placeholder="Write a comment...">
+        <button class="comment-send-btn" onclick="submitComment()">Post</button>
+      </div>
     </div>
   </div>
 

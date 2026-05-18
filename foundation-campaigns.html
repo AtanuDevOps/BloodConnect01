@@ -14,10 +14,6 @@
     .reaction-bar { display:flex; gap:8px; align-items:center; margin-top:8px; }
     .reaction-btn { border:none; background:#f8f8f8; padding:6px 10px; border-radius:999px; cursor:pointer; font-size:12px; }
     .reaction-btn:hover { background:#eee; }
-    .comment-box { display:flex; gap:8px; margin-top:8px; }
-    .comment-input { flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; }
-    .comment-list { display:grid; gap:6px; margin-top:8px; }
-    .comment-item { font-size:13px; background:#fafafa; border:1px solid var(--border); border-radius:8px; padding:8px; }
     .hidden { display:none; }
     .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; }
     .modal-content { width:90%; max-width:520px; background:#fff; border-radius:12px; padding:16px; }
@@ -25,6 +21,115 @@
     .input-field, .select-field, .textarea-field { width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; }
     .preview { width:100%; margin-top:8px; border-radius:8px; }
     .campaign-image { width: 100%; border-radius: 12px; margin-top: 10px; }
+    
+    /* Comment Modal Styles */
+    .comment-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .comment-modal.active { display: flex; align-items: flex-end; justify-content: center; }
+    .comment-modal-content {
+      width: 100%;
+      max-height: 85vh;
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s ease-out;
+    }
+    @media (min-width: 768px) {
+      .comment-modal.active { align-items: center; }
+      .comment-modal-content {
+        max-width: 560px;
+        max-height: 80vh;
+        border-radius: 16px;
+      }
+    }
+    .comment-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .comment-modal-title { font-weight: 600; font-size: 16px; }
+    .comment-modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+    }
+    .comment-modal-preview { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .comment-modal-preview .preview-header { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+    .comment-modal-preview .preview-caption { font-size: 14px; color: #333; }
+    .comment-modal-preview .preview-image { width: 100%; max-height: 120px; object-fit: cover; border-radius: 8px; margin-top: 8px; }
+    .comments-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .comment-item {
+      display: flex;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .comment-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #CE1126, #ff6b6b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .comment-content { flex: 1; }
+    .comment-author { font-weight: 600; margin-bottom: 2px; }
+    .comment-text { color: #444; }
+    .comment-time { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .comment-input-area {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .comment-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 14px;
+      outline: none;
+    }
+    .comment-input:focus { border-color: #CE1126; }
+    .comment-send-btn {
+      background: #CE1126;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .comment-send-btn:hover { background: #a80f20; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -80,6 +185,7 @@
         var closeModalBtn = document.getElementById("closeCampaignModal");
         var imgFileEl = document.getElementById("campaignImage");
         var previewImg = document.getElementById("previewImg");
+        var commentModal = document.getElementById("commentModal");
         if(startBtn){
           startBtn.addEventListener("click", function(){ if(canPost) modal.style.display = "flex"; });
         }
@@ -88,6 +194,7 @@
         }
         window.onclick = function(e) {
           if (e.target === modal) modal.style.display = "none";
+          if (e.target === commentModal) closeCommentModal();
         };
         imgFileEl.addEventListener("change", function(){
           var f = imgFileEl.files && imgFileEl.files[0];
@@ -102,6 +209,10 @@
         });
         document.getElementById("campaignForm").addEventListener("submit", postCampaign);
       });
+      var currentPostData = null;
+      var currentPostId = null;
+      var commentsUnsubscribe = null;
+      
       function initFeed(){
         var feed = document.getElementById("campaignFeed");
         db.collection("foundation_campaign_posts")
@@ -127,19 +238,79 @@
                 +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'love\')">❤️ '+ (p.loveCount||0) +'</button>'
                 +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'wow\')">😮 '+ (p.wowCount||0) +'</button>'
                 +   '<button class="reaction-btn" onclick="reactPost(\''+ doc.id +'\', \'angry\')">😡 '+ (p.angryCount||0) +'</button>'
+                +   '<button class="reaction-btn" onclick="openCommentModal(\''+ doc.id +'\')">💬 '+ (p.commentCount||0) +'</button>'
                 + '</div>'
-                + '<div class="comment-box">'
-                +   '<input id="cmt-'+ doc.id +'" class="comment-input" type="text" maxlength="500" placeholder="Write a comment...">'
-                +   '<button class="action-btn" onclick="submitComment(\''+ doc.id +'\')">Post</button>'
-                + '</div>'
-                + '<div id="comments-'+ doc.id +'" class="comment-list"></div>'
                 + '</div>'
               );
-              loadComments(doc.id);
             });
             feed.innerHTML = html.join("");
           }, function(err){
             feed.innerHTML = '<div class="no-results">Failed to load campaigns.</div>';
+          });
+      }
+      
+      window.openCommentModal = async function(postId) {
+        currentPostId = postId;
+        try {
+          var postDoc = await db.collection("foundation_campaign_posts").doc(postId).get();
+          if(!postDoc.exists) return;
+          currentPostData = postDoc.data();
+          var modal = document.getElementById("commentModal");
+          var previewName = document.getElementById("commentModalPreviewName");
+          var previewCaption = document.getElementById("commentModalPreviewCaption");
+          var previewImage = document.getElementById("commentModalPreviewImage");
+          previewName.textContent = currentPostData.foundationName || foundationName;
+          previewCaption.textContent = currentPostData.caption || "";
+          if(currentPostData.imageURL) {
+            previewImage.src = currentPostData.imageURL;
+            previewImage.classList.remove("hidden");
+          } else {
+            previewImage.classList.add("hidden");
+          }
+          modal.classList.add("active");
+          loadCommentsForModal(postId);
+        } catch(e) {
+          console.error(e);
+        }
+      };
+      
+      window.closeCommentModal = function() {
+        var modal = document.getElementById("commentModal");
+        modal.classList.remove("active");
+        if(commentsUnsubscribe) {
+          commentsUnsubscribe();
+          commentsUnsubscribe = null;
+        }
+        document.getElementById("commentModalInput").value = "";
+      };
+      
+      function loadCommentsForModal(postId) {
+        var listEl = document.getElementById("commentsList");
+        if(commentsUnsubscribe) {
+          commentsUnsubscribe();
+        }
+        commentsUnsubscribe = db.collection("foundation_post_comments")
+          .where("postId","==",postId)
+          .orderBy("createdAt","desc")
+          .onSnapshot(function(snap){
+            if(snap.empty){ 
+              listEl.innerHTML = '<div class="muted" style="text-align:center; padding: 20px;">No comments yet. Be the first!</div>'; 
+              return; 
+            }
+            listEl.innerHTML = snap.docs.map(function(d){
+              var c = d.data();
+              var dt = tsToDate(c.createdAt);
+              var dateStr = dt ? dt.toLocaleString() : "Just now";
+              var initials = (c.userName || "U").charAt(0).toUpperCase();
+              return '<div class="comment-item">'
+                + '<div class="comment-avatar">'+ escapeHtml(initials) +'</div>'
+                + '<div class="comment-content">'
+                + '<div class="comment-author">'+ escapeHtml(c.userName||"User") +'</div>'
+                + '<div class="comment-text">'+ escapeHtml(c.commentText||"") +'</div>'
+                + '<div class="comment-time">'+ dateStr +'</div>'
+                + '</div>'
+                + '</div>';
+            }).join("");
           });
       }
       window.reactPost = async function(postId, type){
@@ -176,16 +347,16 @@
           alert("Failed to react.");
         }
       };
-      window.submitComment = async function(postId){
-        if(!currentUser) return;
+      window.submitComment = async function(){
+        if(!currentUser || !currentPostId) return;
         try{
-          var input = document.getElementById("cmt-"+postId);
+          var input = document.getElementById("commentModalInput");
           var text = (input.value||"").trim();
           if(!text) return;
           var name = currentUser.displayName || "";
-          var pRef = db.collection("foundation_campaign_posts").doc(postId);
+          var pRef = db.collection("foundation_campaign_posts").doc(currentPostId);
           await db.collection("foundation_post_comments").add({
-            postId: postId,
+            postId: currentPostId,
             userId: currentUser.uid,
             userName: name,
             commentText: text,
@@ -193,32 +364,10 @@
           });
           await pRef.update({ commentCount: firebase.firestore.FieldValue.increment(1) });
           input.value = "";
-          loadComments(postId);
         }catch(e){
           alert("Failed to comment.");
         }
       };
-      async function loadComments(postId){
-        try{
-          var listEl = document.getElementById("comments-"+postId);
-          var snap = await db.collection("foundation_post_comments")
-            .where("postId","==",postId)
-            .orderBy("createdAt","desc")
-            .limit(3)
-            .get();
-          if(snap.empty){ listEl.innerHTML = ""; return; }
-          listEl.innerHTML = snap.docs.map(function(d){
-            var c = d.data();
-            var dt = tsToDate(c.createdAt);
-            var dateStr = dt ? dt.toLocaleString() : "Just now";
-            return '<div class="comment-item"><strong>'+ escapeHtml(c.userName||"User") +'</strong> '
-              + '<span class="muted-sm" style="margin-left:6px;">'+ dateStr +'</span>'
-              + '<div>'+ escapeHtml(c.commentText||"") +'</div></div>';
-          }).join("");
-        }catch(e){
-          // ignore
-        }
-      }
       async function postCampaign(e){
         e.preventDefault();
         if(!canPost){ alert("Only foundation admins can start campaigns."); return; }
@@ -322,6 +471,30 @@
           <button id="postBtn" type="submit" class="action-btn"><i class="fa-solid fa-paper-plane"></i> Post</button>
         </div>
       </form>
+    </div>
+  </div>
+  
+  <!-- Comment Modal -->
+  <div id="commentModal" class="comment-modal">
+    <div class="comment-modal-content">
+      <div class="comment-modal-header">
+        <div class="comment-modal-title">Comments</div>
+        <button class="comment-modal-close" onclick="closeCommentModal()"><i class="fa-solid fa-times"></i></button>
+      </div>
+      <div class="comment-modal-preview">
+        <div class="preview-header">
+          <strong id="commentModalPreviewName"></strong>
+        </div>
+        <div id="commentModalPreviewCaption" class="preview-caption"></div>
+        <img id="commentModalPreviewImage" class="preview-image hidden" alt="post preview">
+      </div>
+      <div id="commentsList" class="comments-list">
+        <div class="muted" style="text-align:center; padding: 20px;">Loading comments...</div>
+      </div>
+      <div class="comment-input-area">
+        <input id="commentModalInput" class="comment-input" type="text" maxlength="500" placeholder="Write a comment...">
+        <button class="comment-send-btn" onclick="submitComment()">Post</button>
+      </div>
     </div>
   </div>
 
