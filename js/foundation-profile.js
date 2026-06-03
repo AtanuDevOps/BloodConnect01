@@ -378,6 +378,10 @@
         createdBy: currentUser.uid,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         likes: [],
+        likeCount: 0,
+        loveCount: 0,
+        wowCount: 0,
+        angryCount: 0,
         commentCount: 0
       });
 
