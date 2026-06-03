@@ -131,6 +131,22 @@
         } catch(e){
           // silent fail to keep UI clean
         }
+        
+        // Listen for unread notifications
+        db.collection("notifications")
+          .where("recipientId", "==", user.uid)
+          .where("isRead", "==", false)
+          .onSnapshot(function(snap){
+            var badge = document.getElementById("unreadCount");
+            if(badge){
+              if(snap.size > 0){
+                badge.textContent = snap.size > 9 ? "9+" : snap.size;
+                badge.style.display = "flex";
+              } else {
+                badge.style.display = "none";
+              }
+            }
+          });
       });
     })();
   </script>
@@ -149,8 +165,9 @@
     <a href="#" class="nav-item">
       <i class="fa-solid fa-message"></i>
     </a>
-    <a href="notifications.html" class="nav-item">
+    <a href="notifications.html" class="nav-item" style="position:relative;">
       <i class="fa-solid fa-bell"></i>
+      <span id="unreadCount" class="unread-badge" style="display:none; position:absolute; top:2px; right:2px; background:#CE1126; color:#fff; font-size:10px; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
     </a>
     <a href="donor-dashboard.html" class="nav-item">
       <i class="fa-solid fa-user"></i>

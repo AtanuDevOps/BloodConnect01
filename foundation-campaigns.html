@@ -175,6 +175,21 @@
           }
         } catch(e){}
         initFeed();
+        // Listen for unread notifications
+        db.collection("notifications")
+          .where("recipientId", "==", user.uid)
+          .where("isRead", "==", false)
+          .onSnapshot(function(snap){
+            var badge = document.getElementById("unreadCount");
+            if(badge){
+              if(snap.size > 0){
+                badge.textContent = snap.size > 9 ? "9+" : snap.size;
+                badge.style.display = "flex";
+              } else {
+                badge.style.display = "none";
+              }
+            }
+          });
       });
       window.addEventListener("DOMContentLoaded", function(){
         document.getElementById("backBtn").addEventListener("click", function(){
@@ -228,7 +243,7 @@
               html.push(
                 '<div class="feed-card" id="post-'+ doc.id +'">'
                 + '<div class="feed-header">'
-                +   '<div><strong>'+ escapeHtml(p.foundationName||foundationName) +'</strong> <span class="type-badge">'+ escapeHtml(p.campaignType||"Campaign") +'</span></div>'
+                +   '<div><strong style="cursor:pointer;" onclick="window.location.href=\'foundation-public-profile.html?foundationId='+fid+'\'">'+ escapeHtml(p.foundationName||foundationName) +'</strong> <span class="type-badge">'+ escapeHtml(p.campaignType||"Campaign") +'</span></div>'
                 +   '<div class="muted-sm">'+ dateStr +'</div>'
                 + '</div>'
                 + (p.imageURL ? '<img class="campaign-image" src="'+ escapeHtml(p.imageURL) +'" alt="campaign">' : '')
@@ -302,17 +317,54 @@
               var dt = tsToDate(c.createdAt);
               var dateStr = dt ? dt.toLocaleString() : "Just now";
               var initials = (c.userName || "U").charAt(0).toUpperCase();
+              var canDelete = (currentUser && (c.userId === currentUser.uid || canPost));
+              
               return '<div class="comment-item">'
                 + '<div class="comment-avatar">'+ escapeHtml(initials) +'</div>'
-                + '<div class="comment-content">'
+                + '<div class="comment-content" style="flex:1;">'
+                + '<div style="display:flex; justify-content:space-between; align-items:center;">'
                 + '<div class="comment-author">'+ escapeHtml(c.userName||"User") +'</div>'
+                + (canDelete ? '<button class="comment-menu-btn" onclick="toggleCommentMenu(\''+d.id+'\')" style="background:none; border:none; cursor:pointer; color:var(--muted); padding:4px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>' : '')
+                + '</div>'
                 + '<div class="comment-text">'+ escapeHtml(c.commentText||"") +'</div>'
                 + '<div class="comment-time">'+ dateStr +'</div>'
+                + (canDelete ? '<div id="menu-'+d.id+'" class="comment-menu" style="display:none; margin-top:8px;">'
+                + '<button onclick="deleteComment(\''+d.id+'\',\''+postId+'\')" style="background:none; border:none; color:#CE1126; cursor:pointer; padding:4px 0; font-size:12px; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-trash"></i> Delete</button>'
+                + '</div>' : '')
                 + '</div>'
                 + '</div>';
             }).join("");
           });
       }
+      
+      window.toggleCommentMenu = function(commentId) {
+        var menu = document.getElementById('menu-'+commentId);
+        if(menu) {
+          menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+      };
+      
+      window.deleteComment = async function(commentId, postId) {
+        if(!confirm('Delete this comment?')) return;
+        if(!currentUser) return;
+        
+        try {
+          var commentRef = db.collection('foundation_post_comments').doc(commentId);
+          var postRef = db.collection('foundation_campaign_posts').doc(postId);
+          
+          await db.runTransaction(async function(tx) {
+            var commentSnap = await tx.get(commentRef);
+            if(!commentSnap.exists) return;
+            
+            tx.delete(commentRef);
+            tx.update(postRef, { commentCount: firebase.firestore.FieldValue.increment(-1) });
+          });
+          
+        } catch(e) {
+          console.error('Failed to delete comment:', e);
+          alert('Failed to delete comment.');
+        }
+      };
       window.reactPost = async function(postId, type){
         if(!currentUser) return;
         try{
@@ -355,6 +407,14 @@
           if(!text) return;
           var name = currentUser.displayName || "";
           var pRef = db.collection("foundation_campaign_posts").doc(currentPostId);
+          
+          // Get foundation data to get owner and admins
+          var fdDoc = await db.collection("foundation_requests").doc(fid).get();
+          var fdData = fdDoc.exists ? fdDoc.data() : {};
+          var ownerId = fdData.ownerId;
+          var admins = Array.isArray(fdData.admins) ? fdData.admins : [];
+          
+          // Add comment
           await db.collection("foundation_post_comments").add({
             postId: currentPostId,
             userId: currentUser.uid,
@@ -364,7 +424,31 @@
           });
           await pRef.update({ commentCount: firebase.firestore.FieldValue.increment(1) });
           input.value = "";
+          
+          // Create notifications
+          var recipientIds = new Set();
+          if(ownerId && ownerId !== currentUser.uid) recipientIds.add(ownerId);
+          admins.forEach(function(adminId) {
+            if(adminId && adminId !== currentUser.uid) recipientIds.add(adminId);
+          });
+          
+          recipientIds.forEach(function(recipientId) {
+            db.collection("notifications").add({
+              notificationType: "foundation_comment",
+              foundationId: fid,
+              foundationName: foundationName,
+              postId: currentPostId,
+              commenterId: currentUser.uid,
+              commenterName: name,
+              commentText: text.substring(0, 100), // preview
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              isRead: false,
+              recipientId: recipientId
+            });
+          });
+          
         }catch(e){
+          console.error("Failed to comment:", e);
           alert("Failed to comment.");
         }
       };
@@ -512,8 +596,9 @@
     <a href="#" class="nav-item">
       <i class="fa-solid fa-message"></i>
     </a>
-    <a href="notifications.html" class="nav-item">
+    <a href="notifications.html" class="nav-item" style="position:relative;">
       <i class="fa-solid fa-bell"></i>
+      <span id="unreadCount" class="unread-badge" style="display:none; position:absolute; top:2px; right:2px; background:#CE1126; color:#fff; font-size:10px; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
     </a>
     <a href="donor-dashboard.html" class="nav-item">
       <i class="fa-solid fa-user"></i>

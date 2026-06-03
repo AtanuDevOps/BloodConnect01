@@ -41,6 +41,22 @@
         console.error("Error fetching user profile", e);
       }
       loadDonors();
+      
+      // Listen for unread notifications
+      db.collection("notifications")
+        .where("recipientId", "==", user.uid)
+        .where("isRead", "==", false)
+        .onSnapshot(function(snap){
+          var badge = document.getElementById("unreadCount");
+          if(badge){
+            if(snap.size > 0){
+              badge.textContent = snap.size > 9 ? "9+" : snap.size;
+              badge.style.display = "flex";
+            } else {
+              badge.style.display = "none";
+            }
+          }
+        });
     }
   });
 

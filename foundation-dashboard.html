@@ -210,8 +210,14 @@
     </div>
   </div>
 
+  <!-- Foundation Join Requests Section -->
+  <section class="card" id="foundationJoinRequestsSection" style="display:none; margin:16px; margin-bottom: 0;">
+    <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-users-line"></i> Pending Join Requests</h3>
+    <div id="foundationJoinRequestsList" style="display: grid; gap: 12px;"></div>
+  </section>
+
   <!-- Campaign Feed Container -->
-  <div id="campaignsFeed" style="padding:0 16px 110px;">
+  <div id="campaignFeed" style="padding:0 16px 110px;">
     <!-- Posts will be injected here -->
   </div>
 
@@ -274,8 +280,9 @@
     <a href="foundation-chat.html" class="nav-item">
       <i class="fa-solid fa-message"></i>
     </a>
-    <a href="notifications.html" class="nav-item">
+    <a href="notifications.html" class="nav-item" style="position:relative;">
       <i class="fa-solid fa-bell"></i>
+      <span id="unreadCount" class="unread-badge" style="display:none; position:absolute; top:2px; right:2px; background:#CE1126; color:#fff; font-size:10px; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
     </a>
     <a href="donor-dashboard.html" class="nav-item">
       <i class="fa-solid fa-user"></i>

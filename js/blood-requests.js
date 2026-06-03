@@ -69,6 +69,22 @@
       setupUI();
       loadRequests();
     }
+    
+    // Listen for unread notifications
+    db.collection("notifications")
+      .where("recipientId", "==", user.uid)
+      .where("isRead", "==", false)
+      .onSnapshot(function(snap){
+        var badge = document.getElementById("unreadCount");
+        if(badge){
+          if(snap.size > 0){
+            badge.textContent = snap.size > 9 ? "9+" : snap.size;
+            badge.style.display = "flex";
+          } else {
+            badge.style.display = "none";
+          }
+        }
+      });
   });
 
   // 2. UI Setup
@@ -180,9 +196,9 @@
       return `
         <div class="campaign-card" data-id="${camp.id}">
           <div class="campaign-header">
-            <div class="campaign-avatar">${avatarInitial}</div>
+            <div class="campaign-avatar" style="cursor:pointer;" onclick="window.location.href='foundation-public-profile.html?foundationId=${camp.foundationId}'">${avatarInitial}</div>
             <div class="campaign-author-info">
-              <div class="campaign-author-name">${camp.foundationName || camp.authorName || "Foundation"}</div>
+              <div class="campaign-author-name" style="cursor:pointer;" onclick="window.location.href='foundation-public-profile.html?foundationId=${camp.foundationId}'">${camp.foundationName || camp.authorName || "Foundation"}</div>
               <div class="campaign-meta">
                 <span>${camp.location || "Global"}</span>
                 <span>•</span>

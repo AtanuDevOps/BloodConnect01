@@ -29,6 +29,18 @@
       </div>
     </section>
 
+    <!-- Foundation Join Requests Section -->
+    <section class="card" id="foundationJoinRequestsSection" style="display:none; margin-bottom: 24px;">
+      <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-users-line"></i> Foundation Join Requests</h3>
+      <div id="foundationJoinRequestsList" style="display: grid; gap: 12px;"></div>
+    </section>
+
+    <!-- Foundation Comment Notifications -->
+    <section class="card" id="foundationCommentsSection" style="display:none; margin-bottom: 24px;">
+      <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-comments"></i> Foundation Comments</h3>
+      <div id="foundationCommentsList" style="display: grid; gap: 12px;"></div>
+    </section>
+    
     <!-- Responses Given (As Donor) -->
     <section class="card" id="myResponsesSection" style="display:none; margin-top:16px;">
       <h3 style="margin-bottom:12px;">Requests I Responded To</h3>
@@ -58,6 +70,8 @@
           return;
         }
         loadMyResponses(user.uid);
+        loadFoundationComments(user.uid);
+        loadFoundationJoinRequests(user.uid);
         
         // Listen for profile changes to show access requests
         db.collection("users").doc(user.uid).onSnapshot(doc => {
@@ -67,6 +81,22 @@
             checkEmptyState();
           }
         });
+        
+        // Listen for unread notifications
+        db.collection("notifications")
+          .where("recipientId", "==", user.uid)
+          .where("isRead", "==", false)
+          .onSnapshot(function(snap){
+            var badge = document.getElementById("unreadCount");
+            if(badge){
+              if(snap.size > 0){
+                badge.textContent = snap.size > 9 ? "9+" : snap.size;
+                badge.style.display = "flex";
+              } else {
+                badge.style.display = "none";
+              }
+            }
+          });
       });
 
       async function loadMyResponses(uid) {
@@ -136,10 +166,106 @@
         setTimeout(() => {
           const respVisible = document.getElementById("myResponsesSection").style.display !== "none";
           const accessVisible = document.getElementById("accessRequestsSection").style.display !== "none";
-          document.getElementById("noNotifications").style.display = (!respVisible && !accessVisible) ? "block" : "none";
+          const commentsVisible = document.getElementById("foundationCommentsSection").style.display !== "none";
+          const joinRequestsVisible = document.getElementById("foundationJoinRequestsSection").style.display !== "none";
+          document.getElementById("noNotifications").style.display = (!respVisible && !accessVisible && !commentsVisible && !joinRequestsVisible) ? "block" : "none";
         }, 500);
       }
 
+      function loadFoundationComments(uid) {
+        db.collection("notifications")
+          .where("recipientId", "==", uid)
+          .where("notificationType", "==", "foundation_comment")
+          .orderBy("createdAt", "desc")
+          .onSnapshot(snap => {
+            const section = document.getElementById("foundationCommentsSection");
+            const list = document.getElementById("foundationCommentsList");
+            
+            if(snap.empty) {
+              section.style.display = "none";
+              checkEmptyState();
+              return;
+            }
+            
+            section.style.display = "block";
+            list.innerHTML = snap.docs.map(doc => {
+              const n = doc.data();
+              return `
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:${n.isRead ? '#fff' : '#fff0f2'}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor:pointer;" onclick="openCommentNotification('${doc.id}', '${n.foundationId}', '${n.postId}')">
+                  <div>
+                    <div style="font-weight:600; font-size:14px;">${escapeHtml(n.commenterName)} commented on a ${escapeHtml(n.foundationName)} campaign post</div>
+                    <div style="font-size:12px; color:var(--muted); margin-top:4px;">${escapeHtml(n.commentText)}</div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    ${!n.isRead ? '<div style="width:8px; height:8px; background:#CE1126; border-radius:50%;"></div>' : ''}
+                    <i class="fa-solid fa-chevron-right" style="color:var(--muted);"></i>
+                  </div>
+                </div>
+              `;
+            }).join("");
+            checkEmptyState();
+          });
+      }
+      
+      window.openCommentNotification = async function(notificationId, foundationId, postId) {
+        try {
+          await db.collection("notifications").doc(notificationId).update({ isRead: true });
+          window.location.href = "foundation-campaigns.html?foundationId=" + encodeURIComponent(foundationId) + "#post-" + postId;
+        } catch(e) {
+          console.error(e);
+          window.location.href = "foundation-campaigns.html?foundationId=" + encodeURIComponent(foundationId);
+        }
+      };
+
+      function loadFoundationJoinRequests(uid) {
+        db.collection("notifications")
+          .where("recipientId", "==", uid)
+          .where("notificationType", "==", "foundation_join_request")
+          .orderBy("createdAt", "desc")
+          .onSnapshot(snap => {
+            const section = document.getElementById("foundationJoinRequestsSection");
+            const list = document.getElementById("foundationJoinRequestsList");
+            
+            if(snap.empty) {
+              section.style.display = "none";
+              checkEmptyState();
+              return;
+            }
+            
+            section.style.display = "block";
+            list.innerHTML = snap.docs.map(doc => {
+              const n = doc.data();
+              return `
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:${n.isRead ? '#fff' : '#fff0f2'}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor:pointer;" onclick="openJoinRequestNotification('${doc.id}', '${n.foundationId}')">
+                  <div>
+                    <div style="font-weight:600; font-size:14px;">${escapeHtml(n.userName)} requested to join ${escapeHtml(n.foundationName)}</div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    ${!n.isRead ? '<div style="width:8px; height:8px; background:#CE1126; border-radius:50%;"></div>' : ''}
+                    <i class="fa-solid fa-chevron-right" style="color:var(--muted);"></i>
+                  </div>
+                </div>
+              `;
+            }).join("");
+            checkEmptyState();
+          });
+      }
+      
+      window.openJoinRequestNotification = async function(notificationId, foundationId) {
+        try {
+          await db.collection("notifications").doc(notificationId).update({ isRead: true });
+          window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(foundationId);
+        } catch(e) {
+          console.error(e);
+          window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(foundationId);
+        }
+      };
+      
+      function escapeHtml(text) {
+        if (!text) return "";
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+      
       window.handleRequest = async function(requesterId, action) {
         const user = auth.currentUser;
         if(!user) return;
@@ -173,8 +299,9 @@
     <a href="#" class="nav-item">
       <i class="fa-solid fa-message"></i>
     </a>
-    <a href="notifications.html" class="nav-item active">
+    <a href="notifications.html" class="nav-item active" style="position:relative;">
       <i class="fa-solid fa-bell"></i>
+      <span id="unreadCount" class="unread-badge" style="display:none; position:absolute; top:2px; right:2px; background:#CE1126; color:#fff; font-size:10px; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;"></span>
     </a>
     <a href="donor-dashboard.html" class="nav-item">
       <i class="fa-solid fa-user"></i>
