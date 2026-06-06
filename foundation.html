@@ -14,42 +14,104 @@
     .foundation-card .content { display:flex; flex-direction:column; gap:6px; }
     .foundation-card .title { font-weight:700; }
     .foundation-card .subtitle { font-size:13px; color: var(--muted); }
+    
+    /* New styles for discovery system */
+    .search-bar {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .search-bar:focus-within {
+      border-color: var(--primary);
+    }
+    .search-bar input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+    .discovery-card {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .discovery-card img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: linear-gradient(135deg, #CE1126, #ff6b6b);
+      flex-shrink: 0;
+    }
+    .discovery-card-info {
+      flex: 1;
+    }
+    .discovery-card-name {
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 4px;
+      color: var(--primary);
+    }
+    .discovery-card-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .discovery-card-stats span {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .discovery-card-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .discovery-card-actions button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .visit-btn {
+      background: white;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    .join-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+    }
+    .join-btn.disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #333;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="./firebase-config.js"></script>
-  <script>
-    (function(){
-      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
-      var auth = firebase.auth(app);
-      auth.onAuthStateChanged(function(user){
-        if(!user){
-          window.location.href = "index.html";
-        }
-      });
-      window.addEventListener('DOMContentLoaded', function(){
-        var backBtn = document.getElementById('foundationBackBtn');
-        if(backBtn){
-          backBtn.addEventListener('click', function(){
-            window.location.href = 'blood-requests.html';
-          });
-        }
-        var createCard = document.getElementById('createFoundation');
-        var joinCard = document.getElementById('joinFoundation');
-        if(createCard){
-          createCard.addEventListener('click', function(){
-            window.location.href = 'create-foundation.html';
-          });
-        }
-        if(joinCard){
-          joinCard.addEventListener('click', function(){
-            window.location.href = 'join-foundation.html';
-          });
-        }
-      });
-    })();
-  </script>
 </head>
 <body>
   <nav class="navbar" style="display:flex; align-items:center; justify-content:space-between;">
@@ -79,6 +141,25 @@
       <p class="muted">Organize, join, and participate in blood donation campaigns.</p>
     </div>
 
+    <!-- Search Bar -->
+    <div class="search-bar">
+      <i class="fa-solid fa-search" style="color: var(--muted);"></i>
+      <input type="text" id="foundationSearch" placeholder="Search Foundations">
+    </div>
+
+    <!-- Recommended Foundations -->
+    <section style="margin-bottom: 24px;">
+      <h3 class="section-title">Recommended Foundations</h3>
+      <div id="recommendedFoundations"></div>
+    </section>
+
+    <!-- All Foundations -->
+    <section style="margin-bottom: 100px;">
+      <h3 class="section-title">All Foundations</h3>
+      <div id="allFoundations"></div>
+    </section>
+
+    <!-- Original Create/Join Cards (keep for backward compatibility) -->
     <section class="foundation-grid">
       <div id="createFoundation" class="foundation-card">
         <div class="icon"><i class="fa-solid fa-circle-plus"></i></div>
@@ -97,59 +178,6 @@
       </div>
     </section>
   </main>
-  <script>
-    (function(){
-      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
-      var auth = firebase.auth(app);
-      var db = firebase.firestore(app);
-      auth.onAuthStateChanged(async function(user){
-        if(!user) return;
-        try {
-          var snap = await db.collection("foundation_requests")
-            .where("ownerId","==",user.uid)
-            .where("status","==","approved")
-            .get();
-          if(snap.empty) return;
-          var doc = snap.docs[0];
-          var data = doc.data();
-          var section = document.getElementById("myFoundationSection");
-          var nameEl = document.getElementById("myFoundationName");
-          var locEl = document.getElementById("myFoundationLocation");
-          var card = document.getElementById("myFoundationCard");
-          var btn = document.getElementById("openFoundationBtn");
-          if(section && nameEl && locEl && card && btn){
-            section.style.display = "block";
-            nameEl.textContent = data.name || "My Foundation";
-            locEl.textContent = data.location || "Location not set";
-            var open = function(){
-              var url = "foundation-dashboard.html?foundationId=" + encodeURIComponent(doc.id);
-              window.location.href = url;
-            };
-            card.addEventListener("click", open);
-            btn.addEventListener("click", function(e){ e.stopPropagation(); open(); });
-          }
-        } catch(e){
-          // silent fail to keep UI clean
-        }
-        
-        // Listen for unread notifications
-        db.collection("notifications")
-          .where("recipientId", "==", user.uid)
-          .where("isRead", "==", false)
-          .onSnapshot(function(snap){
-            var badge = document.getElementById("unreadCount");
-            if(badge){
-              if(snap.size > 0){
-                badge.textContent = snap.size > 9 ? "9+" : snap.size;
-                badge.style.display = "flex";
-              } else {
-                badge.style.display = "none";
-              }
-            }
-          });
-      });
-    })();
-  </script>
 
   <!-- Bottom Navigation -->
   <nav class="bottom-nav">
@@ -173,5 +201,300 @@
       <i class="fa-solid fa-user"></i>
     </a>
   </nav>
+
+  <script>
+    (function(){
+      function escapeHtml(text) { if(!text) return ""; return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+      
+      var app = firebase.apps && firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(window.firebaseConfig);
+      var auth = firebase.auth(app);
+      var db = firebase.firestore(app);
+      
+      var currentUser = null;
+      var allFoundationsData = [];
+      var userMemberships = {}; // key: foundationId, value: true
+      var userJoinRequests = {}; // key: foundationId, value: true (if pending)
+      
+      function loadFoundations() {
+        db.collection("foundation_requests")
+          .where("status", "==", "approved")
+          .onSnapshot(async function(snapshot) {
+            allFoundationsData = [];
+            for (const doc of snapshot.docs) {
+              var foundation = { id: doc.id, ...doc.data() };
+              
+              // Calculate stats
+              var memberCount = 0;
+              var availableDonors = 0;
+              var livesSaved = 0;
+              
+              var membersSnap = await db.collection("foundation_members")
+                .where("foundationId", "==", foundation.id)
+                .get();
+              memberCount = membersSnap.size;
+              
+              var memberIds = membersSnap.docs.map(d => d.data().memberId);
+              if (memberIds.length > 0) {
+                // Chunk memberIds to 10 to avoid Firestore limits
+                var chunks = [];
+                for (var i = 0; i < memberIds.length; i += 10) {
+                  chunks.push(memberIds.slice(i, i + 10));
+                }
+                
+                for (const chunk of chunks) {
+                  var usersSnap = await db.collection("users")
+                    .where(firebase.firestore.FieldPath.documentId(), "in", chunk)
+                    .get();
+                  usersSnap.forEach(function(userDoc) {
+                    var userData = userDoc.data();
+                    if (userData.available) availableDonors++;
+                    livesSaved += (userData.donationCount || 0);
+                  });
+                }
+              }
+              
+              foundation.memberCount = memberCount;
+              foundation.availableDonors = availableDonors;
+              foundation.livesSaved = livesSaved;
+              allFoundationsData.push(foundation);
+            }
+            
+            renderFoundations();
+          });
+      }
+      
+      function renderFoundations() {
+        var searchInput = document.getElementById('foundationSearch');
+        var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        var filteredFoundations = allFoundationsData.filter(f => 
+          f.name && f.name.toLowerCase().includes(searchTerm)
+        );
+        
+        // Sort recommended foundations
+        var recommended = [...filteredFoundations].sort((a, b) => {
+          if (b.memberCount !== a.memberCount) return b.memberCount - a.memberCount;
+          if (b.availableDonors !== a.availableDonors) return b.availableDonors - a.availableDonors;
+          return b.livesSaved - a.livesSaved;
+        });
+        
+        renderFoundationList(recommended, 'recommendedFoundations');
+        renderFoundationList(filteredFoundations, 'allFoundations');
+      }
+      
+      function renderFoundationList(foundations, containerId) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        
+        if (foundations.length === 0) {
+          container.innerHTML = '<div class="muted" style="text-align:center; padding:20px;">No foundations found.</div>';
+          return;
+        }
+        
+        container.innerHTML = foundations.map(function(foundation) {
+          var isMember = userMemberships[foundation.id];
+          var hasPendingRequest = userJoinRequests[foundation.id];
+          
+          var joinBtnText = isMember ? 'Joined' : hasPendingRequest ? 'Request Sent' : 'Join Foundation';
+          var joinBtnDisabled = isMember || hasPendingRequest;
+          
+          return `
+            <div class="discovery-card">
+              <img src="${foundation.profileImage || 'https://via.placeholder.com/150?text=F'}" alt="${escapeHtml(foundation.name)}">
+              <div class="discovery-card-info">
+                <div class="discovery-card-name">${escapeHtml(foundation.name)}</div>
+                <div class="discovery-card-stats">
+                  <span><i class="fa-solid fa-users"></i> ${foundation.memberCount} Members</span>
+                  <span><i class="fa-solid fa-hand-holding-droplet"></i> ${foundation.availableDonors} Available</span>
+                  <span><i class="fa-solid fa-heart"></i> ${foundation.livesSaved} Lives Saved</span>
+                </div>
+                <div class="discovery-card-actions">
+                  <button class="visit-btn" onclick="window.location.href='foundation-public-profile.html?foundationId=${encodeURIComponent(foundation.id)}'">
+                    Visit
+                  </button>
+                  <button 
+                    class="join-btn ${joinBtnDisabled ? 'disabled' : ''}" 
+                    ${joinBtnDisabled ? 'disabled' : ''} 
+                    onclick="handleJoinFoundation('${foundation.id}', '${escapeHtml(foundation.name)}')"
+                  >
+                    ${joinBtnText}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      window.handleJoinFoundation = async function(foundationId, foundationName) {
+        if (!currentUser) return;
+        
+        try {
+          // Check if already sent a request or is a member (to prevent duplicates)
+          var existingRequest = await db.collection("foundation_join_requests")
+            .where("foundationId", "==", foundationId)
+            .where("userId", "==", currentUser.uid)
+            .where("status", "==", "pending")
+            .get();
+          if (!existingRequest.empty) return;
+          
+          var existingMember = await db.collection("foundation_members")
+            .where("foundationId", "==", foundationId)
+            .where("memberId", "==", currentUser.uid)
+            .get();
+          if (!existingMember.empty) return;
+          
+          var userName = currentUser.displayName || 'Anonymous';
+          
+          // Get foundation data to notify owner/admins
+          var foundationDoc = await db.collection("foundation_requests").doc(foundationId).get();
+          var foundationData = foundationDoc.exists ? foundationDoc.data() : {};
+          
+          // Add join request
+          await db.collection("foundation_join_requests").add({
+            foundationId: foundationId,
+            userId: currentUser.uid,
+            userName: userName,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            status: "pending"
+          });
+          
+          // Notify foundation owner and admins
+          var recipientIds = new Set();
+          if (foundationData.ownerId && foundationData.ownerId !== currentUser.uid) {
+            recipientIds.add(foundationData.ownerId);
+          }
+          if (foundationData.admins) {
+            foundationData.admins.forEach(function(adminId) {
+              if (adminId && adminId !== currentUser.uid) {
+                recipientIds.add(adminId);
+              }
+            });
+          }
+          
+          recipientIds.forEach(function(recipientId) {
+            db.collection("notifications").add({
+              notificationType: "foundation_join_request",
+              foundationId: foundationId,
+              foundationName: foundationName,
+              userId: currentUser.uid,
+              userName: userName,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              isRead: false,
+              recipientId: recipientId
+            });
+          });
+          
+          // Update local state
+          userJoinRequests[foundationId] = true;
+          renderFoundations();
+          
+          alert("Join request sent!");
+        } catch (e) {
+          console.error(e);
+          alert("Failed to send join request.");
+        }
+      };
+
+      auth.onAuthStateChanged(async function(user){
+        if(!user) {
+          window.location.href = "index.html";
+          return;
+        }
+        currentUser = user;
+        
+        try {
+          // Load user's own foundation
+          var snap = await db.collection("foundation_requests")
+            .where("ownerId","==",user.uid)
+            .where("status","==","approved")
+            .get();
+          if(!snap.empty) {
+            var doc = snap.docs[0];
+            var data = doc.data();
+            var section = document.getElementById("myFoundationSection");
+            var nameEl = document.getElementById("myFoundationName");
+            var locEl = document.getElementById("myFoundationLocation");
+            var card = document.getElementById("myFoundationCard");
+            var btn = document.getElementById("openFoundationBtn");
+            if(section && nameEl && locEl && card && btn){
+              section.style.display = "block";
+              nameEl.textContent = data.name || "My Foundation";
+              locEl.textContent = data.location || "Location not set";
+              var open = function(){
+                var url = "foundation-dashboard.html?foundationId=" + encodeURIComponent(doc.id);
+                window.location.href = url;
+              };
+              card.addEventListener("click", open);
+              btn.addEventListener("click", function(e){ e.stopPropagation(); open(); });
+            }
+          }
+          
+          // Load user's memberships
+          var membersSnap = await db.collection("foundation_members")
+            .where("memberId", "==", user.uid)
+            .get();
+          membersSnap.forEach(function(memberDoc) {
+            var m = memberDoc.data();
+            userMemberships[m.foundationId] = true;
+          });
+          
+          // Load user's pending join requests
+          var requestsSnap = await db.collection("foundation_join_requests")
+            .where("userId", "==", user.uid)
+            .where("status", "==", "pending")
+            .get();
+          requestsSnap.forEach(function(reqDoc) {
+            var r = reqDoc.data();
+            userJoinRequests[r.foundationId] = true;
+          });
+          
+          // Load all approved foundations
+          loadFoundations();
+        } catch(e){
+          console.error(e);
+        }
+        
+        // Listen for unread notifications
+        db.collection("notifications")
+          .where("recipientId", "==", user.uid)
+          .where("isRead", "==", false)
+          .onSnapshot(function(snap){
+            var badge = document.getElementById("unreadCount");
+            if(badge){
+              if(snap.size > 0){
+                badge.textContent = snap.size > 9 ? "9+" : snap.size;
+                badge.style.display = "flex";
+              } else {
+                badge.style.display = "none";
+              }
+            }
+          });
+      });
+      
+      window.addEventListener('DOMContentLoaded', function(){
+        var backBtn = document.getElementById('foundationBackBtn');
+        if(backBtn){
+          backBtn.addEventListener('click', function(){
+            window.location.href = 'blood-requests.html';
+          });
+        }
+
+        var createCard = document.getElementById('createFoundation');
+        if(createCard){
+          createCard.addEventListener('click', function(){
+            window.location.href = 'create-foundation.html';
+          });
+        }
+        
+        // Search functionality
+        var searchInput = document.getElementById('foundationSearch');
+        if(searchInput) {
+          searchInput.addEventListener('input', function() {
+            renderFoundations();
+          });
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
