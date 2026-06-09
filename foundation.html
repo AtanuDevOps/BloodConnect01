@@ -231,14 +231,21 @@
               var membersSnap = await db.collection("foundation_members")
                 .where("foundationId", "==", foundation.id)
                 .get();
-              memberCount = membersSnap.size;
+              // Use unique member IDs
+              const uniqueMemberIds = new Set();
+              membersSnap.docs.forEach(d => {
+                if (d.data().memberId) {
+                  uniqueMemberIds.add(d.data().memberId);
+                }
+              });
+              memberCount = uniqueMemberIds.size;
               
-              var memberIds = membersSnap.docs.map(d => d.data().memberId);
-              if (memberIds.length > 0) {
+              if (uniqueMemberIds.size > 0) {
                 // Chunk memberIds to 10 to avoid Firestore limits
                 var chunks = [];
-                for (var i = 0; i < memberIds.length; i += 10) {
-                  chunks.push(memberIds.slice(i, i + 10));
+                const memberIdArray = Array.from(uniqueMemberIds);
+                for (var i = 0; i < memberIdArray.length; i += 10) {
+                  chunks.push(memberIdArray.slice(i, i + 10));
                 }
                 
                 for (const chunk of chunks) {

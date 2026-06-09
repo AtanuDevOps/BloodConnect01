@@ -190,20 +190,24 @@
 
   async function loadStats() {
     try {
-      // 1. Members count
+      // 1. Members count (unique user IDs)
       const membersSnap = await db.collection("foundation_members").where("foundationId","==",fid).get();
-      document.getElementById('membersCount').textContent = membersSnap.size;
+      const uniqueMemberIds = new Set();
+      membersSnap.docs.forEach(doc => {
+        if (doc.data().memberId) {
+          uniqueMemberIds.add(doc.data().memberId);
+        }
+      });
+      document.getElementById('membersCount').textContent = uniqueMemberIds.size;
 
-      const memberIds = membersSnap.docs.map(d => d.data().memberId);
-      if(memberIds.length === 0) return;
+      if(uniqueMemberIds.size === 0) return;
 
       // 2. Available donors & Life Saved
-      // Note: Firestore IN query limited to 10. For production, consider a cloud function or different structure.
-      // Here we chunk it for demo safety if members < 10.
       const queryLimit = 10;
+      const memberIdArray = Array.from(uniqueMemberIds);
       const chunks = [];
-      for (let i = 0; i < memberIds.length; i += queryLimit) {
-          chunks.push(memberIds.slice(i, i + queryLimit));
+      for (let i = 0; i < memberIdArray.length; i += queryLimit) {
+          chunks.push(memberIdArray.slice(i, i + queryLimit));
       }
 
       let availableCount = 0;

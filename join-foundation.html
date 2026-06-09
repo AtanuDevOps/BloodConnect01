@@ -80,13 +80,23 @@
             alert("Only donors can send join requests.");
             return;
           }
+          // Check if user is already a member
+          const memberSnap = await db.collection("foundation_members")
+            .where("foundationId","==",fid)
+            .where("memberId","==",currentUser.uid)
+            .get();
+          if(!memberSnap.empty){
+            alert("You are already a member of this foundation.");
+            return;
+          }
           // Prevent duplicate request
           const dupSnap = await db.collection("foundation_join_requests")
             .where("foundationId","==",fid)
-            .where("donorId","==",currentUser.uid)
+            .where("userId","==",currentUser.uid)
+            .where("status","==","pending")
             .get();
           if(!dupSnap.empty){
-            alert("Join request already sent.");
+            alert("You already have a pending join request.");
             return;
           }
           const donorName = currentUserProfile.name || currentUser.displayName || "Donor";
@@ -94,14 +104,28 @@
             foundationId: fid,
             foundationName: fname,
             ownerId: ownerId,
-            donorId: currentUser.uid,
-            donorName: donorName,
+            userId: currentUser.uid,
+            userName: donorName,
             status: "pending",
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
+          // Notify foundation owner and admins
+          if(ownerId && ownerId !== currentUser.uid){
+            db.collection("notifications").add({
+              notificationType: "foundation_join_request",
+              foundationId: fid,
+              foundationName: fname,
+              userId: currentUser.uid,
+              userName: donorName,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              isRead: false,
+              recipientId: ownerId
+            });
+          }
           alert("Join request sent successfully!");
           loadFoundations();
         }catch(e){
+          console.error("Error sending join request:", e);
           alert("Failed to send join request.");
         }
       };

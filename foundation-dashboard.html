@@ -9,6 +9,190 @@
   <link rel="stylesheet" href="./foundation-profile.css">
   <style>
     .hidden { display:none; }
+    /* Management Modal Styles */
+    .management-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1001;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .management-modal.active { display: block; }
+    .management-modal-content {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      max-height: 90vh;
+      background: #fff;
+      border-radius: 24px 24px 0 0;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s ease-out;
+    }
+    @media (min-width: 768px) {
+      .management-modal-content {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 700px;
+        max-height: 85vh;
+        border-radius: 24px;
+        position: absolute;
+      }
+    }
+    .management-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .management-modal-title { font-weight: 700; font-size: 18px; }
+    .management-modal-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #666;
+      padding: 4px;
+    }
+    /* Tabs */
+    .management-tabs {
+      display: flex;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .management-tab {
+      flex: 1;
+      padding: 14px 12px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      color: #888;
+      cursor: pointer;
+      text-align: center;
+    }
+    .management-tab.active {
+      color: #CE1126;
+      border-bottom: 2px solid #CE1126;
+    }
+    /* Tab Content */
+    .management-tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: none;
+    }
+    .management-tab-content.active { display: block; }
+    /* Member Card */
+    .member-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    .member-info { display: flex; gap: 12px; align-items: center; }
+    .member-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #CE1126, #ff6b6b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .member-details { display: flex; flex-direction: column; }
+    .member-name { font-weight: 700; font-size: 15px; }
+    .role-badge {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .role-badge.owner { background: #fff0f2; color: #CE1126; }
+    .role-badge.admin { background: #fff3e0; color: #f57c00; }
+    .role-badge.member { background: #e3f2fd; color: #1565c0; }
+    /* Member Actions */
+    .member-actions { display: flex; gap: 8px; }
+    .member-actions button {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .action-primary { background: #CE1126; color: #fff; border: none; }
+    .action-secondary { background: #fff; color: #333; border: 1px solid #ddd; }
+    .action-danger { background: #fff; color: #CE1126; border: 1px solid #CE1126; }
+    /* Analytics Cards */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 480px) {
+      .analytics-grid { grid-template-columns: 1fr; }
+    }
+    .analytics-card {
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .analytics-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #CE1126;
+      margin-bottom: 4px;
+    }
+    .analytics-label { font-size: 13px; color: #666; font-weight: 600; }
+    /* Settings */
+    .settings-section {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #eee;
+    }
+    .settings-section:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+    .settings-title { font-weight: 700; font-size: 16px; margin-bottom: 12px; }
+    .settings-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .settings-input:focus { outline: none; border-color: #CE1126; }
+    .settings-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .coming-soon {
+      background: #f5f5f5;
+      color: #999;
+      border: none;
+      cursor: not-allowed;
+    }
     /* Comment Modal Styles */
     .comment-modal {
       display: none;
@@ -219,6 +403,73 @@
   <!-- Campaign Feed Container -->
   <div id="campaignsFeed" style="padding:0 16px 110px;">
     <!-- Posts will be injected here -->
+  </div>
+
+  <!-- Management Modal -->
+  <div id="managementModal" class="management-modal">
+    <div class="management-modal-content">
+      <div class="management-modal-header">
+        <div class="management-modal-title">Manage Foundation</div>
+        <button class="management-modal-close" onclick="closeManagementModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <div class="management-tabs">
+        <button class="management-tab active" onclick="switchTab('members')">Members</button>
+        <button class="management-tab" onclick="switchTab('joinRequests')">Requests</button>
+        <button class="management-tab" onclick="switchTab('analytics')">Analytics</button>
+        <button class="management-tab" onclick="switchTab('settings')">Settings</button>
+      </div>
+      
+      <!-- Members Tab -->
+      <div id="membersTab" class="management-tab-content active">
+        <div id="membersList"></div>
+      </div>
+      
+      <!-- Join Requests Tab -->
+      <div id="joinRequestsTab" class="management-tab-content">
+        <div id="managementJoinRequestsList"></div>
+      </div>
+      
+      <!-- Analytics Tab -->
+      <div id="analyticsTab" class="management-tab-content">
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="analytics-value" id="analyticsMembers">0</div>
+            <div class="analytics-label">Total Members</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value" id="analyticsAvailable">0</div>
+            <div class="analytics-label">Available Donors</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value" id="analyticsLives">0</div>
+            <div class="analytics-label">Lives Saved</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value" id="analyticsCampaigns">0</div>
+            <div class="analytics-label">Campaigns</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Settings Tab -->
+      <div id="settingsTab" class="management-tab-content">
+        <div class="settings-section">
+          <div class="settings-title">Foundation Info</div>
+          <input type="text" id="settingsFoundationName" class="settings-input" placeholder="Foundation Name">
+          <textarea id="settingsFoundationDescription" class="settings-input" rows="3" placeholder="Description"></textarea>
+          <input type="text" id="settingsFoundationLocation" class="settings-input" placeholder="Location">
+          <button class="settings-btn action-primary" onclick="saveFoundationSettings()">Save Changes</button>
+        </div>
+        <div class="settings-section">
+          <div class="settings-title">Danger Zone</div>
+          <button class="settings-btn coming-soon">Transfer Ownership (Coming Soon)</button>
+          <button class="settings-btn coming-soon" style="margin-top:10px;">Delete Foundation (Coming Soon)</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Campaign Creation Modal (Simplified) -->
