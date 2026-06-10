@@ -141,6 +141,25 @@
       <p class="muted">Organize, join, and participate in blood donation campaigns.</p>
     </div>
 
+    <!-- Create/Join Foundation Cards -->
+    <section class="foundation-grid" style="margin-bottom: 24px;">
+      <div id="createFoundation" class="foundation-card">
+        <div class="icon"><i class="fa-solid fa-circle-plus"></i></div>
+        <div class="content">
+          <div class="title">Create Foundation</div>
+          <div class="subtitle">Start your own blood donation community, run campaigns, and manage donors.</div>
+        </div>
+      </div>
+
+      <div id="joinFoundation" class="foundation-card">
+        <div class="icon"><i class="fa-solid fa-people-group"></i></div>
+        <div class="content">
+          <div class="title">Join Foundation</div>
+          <div class="subtitle">Join an existing foundation to participate in campaigns and community activities.</div>
+        </div>
+      </div>
+    </section>
+
     <!-- Search Bar -->
     <div class="search-bar">
       <i class="fa-solid fa-search" style="color: var(--muted);"></i>
@@ -157,25 +176,6 @@
     <section style="margin-bottom: 100px;">
       <h3 class="section-title">All Foundations</h3>
       <div id="allFoundations"></div>
-    </section>
-
-    <!-- Original Create/Join Cards (keep for backward compatibility) -->
-    <section class="foundation-grid">
-      <div id="createFoundation" class="foundation-card">
-        <div class="icon"><i class="fa-solid fa-circle-plus"></i></div>
-        <div class="content">
-          <div class="title">Create Foundation</div>
-          <div class="subtitle">Start your own blood donation community, run campaigns, and manage donors.</div>
-        </div>
-      </div>
-
-      <div id="joinFoundation" class="foundation-card">
-        <div class="icon"><i class="fa-solid fa-people-group"></i></div>
-        <div class="content">
-          <div class="title">Join Foundation</div>
-          <div class="subtitle">Join an existing foundation to participate in campaigns and community activities.</div>
-        </div>
-      </div>
     </section>
   </main>
 
@@ -298,11 +298,33 @@
         }
         
         container.innerHTML = foundations.map(function(foundation) {
+          // Check roles
+          var isOwner = currentUser && foundation.ownerId === currentUser.uid;
+          var isAdmin = currentUser && foundation.admins && foundation.admins.includes(currentUser.uid);
           var isMember = userMemberships[foundation.id];
           var hasPendingRequest = userJoinRequests[foundation.id];
           
-          var joinBtnText = isMember ? 'Joined' : hasPendingRequest ? 'Request Sent' : 'Join Foundation';
-          var joinBtnDisabled = isMember || hasPendingRequest;
+          var joinBtnText = 'Join Foundation';
+          var joinBtnDisabled = false;
+          var joinBtnOnclick = `handleJoinFoundation('${foundation.id}', '${escapeHtml(foundation.name)}')`;
+          
+          if (isOwner) {
+            joinBtnText = 'Manage';
+            joinBtnDisabled = false;
+            joinBtnOnclick = `window.location.href='foundation-dashboard.html?foundationId=${encodeURIComponent(foundation.id)}'`;
+          } else if (isAdmin) {
+            joinBtnText = 'Admin';
+            joinBtnDisabled = true;
+            joinBtnOnclick = '';
+          } else if (isMember) {
+            joinBtnText = 'Joined';
+            joinBtnDisabled = true;
+            joinBtnOnclick = '';
+          } else if (hasPendingRequest) {
+            joinBtnText = 'Request Sent';
+            joinBtnDisabled = true;
+            joinBtnOnclick = '';
+          }
           
           return `
             <div class="discovery-card">
@@ -321,7 +343,7 @@
                   <button 
                     class="join-btn ${joinBtnDisabled ? 'disabled' : ''}" 
                     ${joinBtnDisabled ? 'disabled' : ''} 
-                    onclick="handleJoinFoundation('${foundation.id}', '${escapeHtml(foundation.name)}')"
+                    ${joinBtnOnclick ? `onclick="${joinBtnOnclick}"` : ''}
                   >
                     ${joinBtnText}
                   </button>
@@ -490,6 +512,13 @@
         if(createCard){
           createCard.addEventListener('click', function(){
             window.location.href = 'create-foundation.html';
+          });
+        }
+        
+        var joinCard = document.getElementById('joinFoundation');
+        if(joinCard){
+          joinCard.addEventListener('click', function(){
+            window.location.href = 'join-foundation.html';
           });
         }
         

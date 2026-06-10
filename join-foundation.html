@@ -26,17 +26,44 @@
       const auth = firebase.auth(app);
       const db = firebase.firestore(app);
       let currentUser = null, currentUserProfile = null, foundations = [];
+      let userMemberships = {};
+      let userJoinRequests = {};
+      
       function escapeHtml(text){ if(!text) return ""; return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
       function short(text){ const t = text||""; return t.length>120 ? t.slice(0,117)+"..." : t; }
+      
       auth.onAuthStateChanged(async (user)=>{
         if(!user){ window.location.href = "index.html"; return; }
         currentUser = user;
         try {
           const doc = await db.collection("users").doc(user.uid).get();
           if(doc.exists) currentUserProfile = doc.data();
-        } catch(e){}
+          
+          // Load user's memberships
+          const membersSnap = await db.collection("foundation_members")
+            .where("memberId", "==", user.uid)
+            .get();
+          membersSnap.forEach(function(memberDoc) {
+            var m = memberDoc.data();
+            userMemberships[m.foundationId] = true;
+          });
+          
+          // Load user's pending join requests
+          const requestsSnap = await db.collection("foundation_join_requests")
+            .where("userId", "==", user.uid)
+            .where("status", "==", "pending")
+            .get();
+          requestsSnap.forEach(function(reqDoc) {
+            var r = reqDoc.data();
+            userJoinRequests[r.foundationId] = true;
+          });
+          
+        } catch(e){
+          console.error("Error loading user data:", e);
+        }
         loadFoundations();
       });
+      
       async function loadFoundations(){
         try{
           const snap = await db.collection("foundation_requests").where("status","==","approved").get();
@@ -51,6 +78,7 @@
           document.getElementById("foundationsGrid").innerHTML = '<div class="no-results">Failed to load foundations.</div>';
         }
       }
+      
       function render(){
         const term = document.getElementById("searchInput").value.trim().toLowerCase();
         const list = foundations.filter(f => (f.name||"").toLowerCase().includes(term));
@@ -58,16 +86,46 @@
           document.getElementById("foundationsGrid").innerHTML = '<div class="no-results">No foundations found.</div>';
           return;
         }
-        document.getElementById("foundationsGrid").innerHTML = list.map(f=>`
-          <div class="foundation-card">
-            <div class="foundation-info">
-              <div class="foundation-name">${escapeHtml(f.name||"Foundation")}</div>
-              <div class="muted" style="font-size:13px;">${escapeHtml(f.location||"Location not set")}</div>
-              <div class="foundation-desc">${escapeHtml(short(f.description))}</div>
+        document.getElementById("foundationsGrid").innerHTML = list.map(f=>{
+          // Check roles
+          var isOwner = currentUser && f.ownerId === currentUser.uid;
+          var isAdmin = currentUser && f.admins && f.admins.includes(currentUser.uid);
+          var isMember = userMemberships[f.id];
+          var hasPendingRequest = userJoinRequests[f.id];
+          
+          var btnText = 'Join';
+          var btnDisabled = false;
+          var btnOnclick = `joinFoundation('${f.id}','${escapeHtml(f.name||"Foundation")}','${escapeHtml(f.ownerId||"")}')`;
+          
+          if (isOwner) {
+            btnText = 'Manage';
+            btnDisabled = false;
+            btnOnclick = `window.location.href='foundation-dashboard.html?foundationId=${encodeURIComponent(f.id)}'`;
+          } else if (isAdmin) {
+            btnText = 'Admin';
+            btnDisabled = true;
+            btnOnclick = '';
+          } else if (isMember) {
+            btnText = 'Joined';
+            btnDisabled = true;
+            btnOnclick = '';
+          } else if (hasPendingRequest) {
+            btnText = 'Request Sent';
+            btnDisabled = true;
+            btnOnclick = '';
+          }
+          
+          return `
+            <div class="foundation-card">
+              <div class="foundation-info">
+                <div class="foundation-name">${escapeHtml(f.name||"Foundation")}</div>
+                <div class="muted" style="font-size:13px;">${escapeHtml(f.location||"Location not set")}</div>
+                <div class="foundation-desc">${escapeHtml(short(f.description))}</div>
+              </div>
+              <button class="action-btn" ${btnDisabled ? 'disabled' : ''} ${btnOnclick ? `onclick="${btnOnclick}"` : ''}>${btnText}</button>
             </div>
-            <button class="action-btn" onclick="joinFoundation('${f.id}','${escapeHtml(f.name||"Foundation")}','${escapeHtml(f.ownerId||"")}')">Join</button>
-          </div>
-        `).join("");
+          `;
+        }).join("");
       }
       window.addEventListener("DOMContentLoaded", function(){
         document.getElementById("backBtn").addEventListener("click", ()=> window.location.href = "foundation.html");
@@ -122,8 +180,10 @@
               recipientId: ownerId
             });
           }
+          // Update local state
+          userJoinRequests[fid] = true;
           alert("Join request sent successfully!");
-          loadFoundations();
+          render();
         }catch(e){
           console.error("Error sending join request:", e);
           alert("Failed to send join request.");

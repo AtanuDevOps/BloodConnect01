@@ -75,7 +75,29 @@
   async function checkMembershipStatus() {
     const joinBtn = document.getElementById('joinBtn');
     try {
-      // Check if already a member
+      // Case 1: Check if user is owner
+      if (foundationData && foundationData.ownerId === currentUser.uid) {
+        membershipStatus = 'owner';
+        joinBtn.textContent = 'Manage Foundation';
+        joinBtn.classList.remove('disabled');
+        joinBtn.disabled = false;
+        joinBtn.onclick = function() {
+          window.location.href = 'foundation-dashboard.html?foundationId=' + encodeURIComponent(fid);
+        };
+        return;
+      }
+
+      // Case 2: Check if user is admin
+      if (foundationData && foundationData.admins && foundationData.admins.includes(currentUser.uid)) {
+        membershipStatus = 'admin';
+        joinBtn.textContent = 'Admin';
+        joinBtn.classList.add('disabled');
+        joinBtn.disabled = true;
+        joinBtn.onclick = null;
+        return;
+      }
+
+      // Case 3: Check if already a member
       const memberDoc = await db.collection('foundation_members')
         .where('foundationId', '==', fid)
         .where('memberId', '==', currentUser.uid)
@@ -86,10 +108,11 @@
         joinBtn.textContent = 'Joined';
         joinBtn.classList.add('disabled');
         joinBtn.disabled = true;
+        joinBtn.onclick = null;
         return;
       }
 
-      // Check if request is pending
+      // Case 4: Check if request is pending
       const requestDoc = await db.collection('foundation_join_requests')
         .where('foundationId', '==', fid)
         .where('userId', '==', currentUser.uid)
@@ -101,84 +124,85 @@
         joinBtn.textContent = 'Request Sent';
         joinBtn.classList.add('disabled');
         joinBtn.disabled = true;
+        joinBtn.onclick = null;
         return;
       }
 
-      // Otherwise, show Join button
+      // Case 5: Otherwise, show Join button
       membershipStatus = 'not-member';
       joinBtn.textContent = 'Join Foundation';
       joinBtn.classList.remove('disabled');
       joinBtn.disabled = false;
+      joinBtn.onclick = handleJoinClick;
       
     } catch (e) {
       console.error('Error checking membership status:', e);
     }
   }
 
-  // Join button event listener
-  document.addEventListener('DOMContentLoaded', function() {
-    const joinBtn = document.getElementById('joinBtn');
-    if (joinBtn) {
-      joinBtn.addEventListener('click', async function() {
-        if (membershipStatus !== 'not-member') return;
+  // Join button handler function
+  async function handleJoinClick() {
+    if (membershipStatus !== 'not-member') return;
+    
+    try {
+      // Get current user data
+      const userDoc = await db.collection('users').doc(currentUser.uid).get();
+      const userName = userDoc.exists ? (userDoc.data().name || currentUser.displayName || 'Anonymous') : 'Anonymous';
+      
+      // Create join request
+      await db.collection('foundation_join_requests').add({
+        foundationId: fid,
+        userId: currentUser.uid,
+        userName: userName,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        status: 'pending'
+      });
+      
+      // Notify foundation owner and admins
+      if (foundationData) {
+        var recipientIds = new Set();
+        if (foundationData.ownerId && foundationData.ownerId !== currentUser.uid) {
+          recipientIds.add(foundationData.ownerId);
+        }
+        if (foundationData.admins) {
+          foundationData.admins.forEach(function(adminId) {
+            if (adminId && adminId !== currentUser.uid) {
+              recipientIds.add(adminId);
+            }
+          });
+        }
         
-        try {
-          // Get current user data
-          const userDoc = await db.collection('users').doc(currentUser.uid).get();
-          const userName = userDoc.exists ? (userDoc.data().name || currentUser.displayName || 'Anonymous') : 'Anonymous';
-          
-          // Create join request
-          await db.collection('foundation_join_requests').add({
+        recipientIds.forEach(function(recipientId) {
+          db.collection("notifications").add({
+            notificationType: "foundation_join_request",
             foundationId: fid,
+            foundationName: foundationData.name,
             userId: currentUser.uid,
             userName: userName,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            status: 'pending'
+            isRead: false,
+            recipientId: recipientId
           });
-          
-          // Notify foundation owner and admins
-          if (foundationData) {
-            var recipientIds = new Set();
-            if (foundationData.ownerId && foundationData.ownerId !== currentUser.uid) {
-              recipientIds.add(foundationData.ownerId);
-            }
-            if (foundationData.admins) {
-              foundationData.admins.forEach(function(adminId) {
-                if (adminId && adminId !== currentUser.uid) {
-                  recipientIds.add(adminId);
-                }
-              });
-            }
-            
-            recipientIds.forEach(function(recipientId) {
-              db.collection("notifications").add({
-                notificationType: "foundation_join_request",
-                foundationId: fid,
-                foundationName: foundationData.name,
-                userId: currentUser.uid,
-                userName: userName,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                isRead: false,
-                recipientId: recipientId
-              });
-            });
-          }
-          
-          // Update UI
-          membershipStatus = 'pending';
-          joinBtn.textContent = 'Request Sent';
-          joinBtn.classList.add('disabled');
-          joinBtn.disabled = true;
-          
-          alert('Join request sent!');
-          
-        } catch (e) {
-          console.error('Error sending join request:', e);
-          alert('Failed to send join request.');
-        }
-      });
+        });
+      }
+      
+      // Update UI
+      membershipStatus = 'pending';
+      const joinBtn = document.getElementById('joinBtn');
+      joinBtn.textContent = 'Request Sent';
+      joinBtn.classList.add('disabled');
+      joinBtn.disabled = true;
+      
+      alert('Join request sent!');
+      
+    } catch (e) {
+      console.error('Error sending join request:', e);
+      alert('Failed to send join request.');
     }
-    
+  }
+
+  // DOMContentLoaded listener
+  document.addEventListener('DOMContentLoaded', function() {
     // Back button
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
