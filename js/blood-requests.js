@@ -284,30 +284,86 @@
     if(commentsUnsubscribe) {
       commentsUnsubscribe();
     }
+    // Show loading state
+    listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #888;">Loading comments...</div>';
     commentsUnsubscribe = db.collection("foundation_post_comments")
       .where("postId","==",postId)
       .orderBy("createdAt","desc")
-      .onSnapshot(function(snap){
+      .onSnapshot(async function(snap){
         if(snap.empty){ 
           listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #888;">No comments yet. Be the first!</div>'; 
           return; 
         }
+        
+        // Get the post to find foundationId
+        const postDoc = await db.collection("foundation_campaign_posts").doc(postId).get();
+        let isOwner = false;
+        let isAdmin = false;
+        if (postDoc.exists) {
+          const postData = postDoc.data();
+          const foundationDoc = await db.collection("foundation_requests").doc(postData.foundationId).get();
+          if (foundationDoc.exists) {
+            const foundationData = foundationDoc.data();
+            isOwner = currentUser && foundationData.ownerId === currentUser.uid;
+            isAdmin = currentUser && foundationData.admins && foundationData.admins.includes(currentUser.uid);
+          }
+        }
+        
         listEl.innerHTML = snap.docs.map(function(d){
           var c = d.data();
           var dt = tsToDate(c.createdAt);
           var dateStr = dt ? dt.toLocaleString() : "Just now";
           var initials = (c.userName || "U").charAt(0).toUpperCase();
+          const canDelete = currentUser && (c.userId === currentUser.uid || isOwner || isAdmin);
           return '<div class="comment-item">'
             + '<div class="comment-avatar">'+ escapeHtml(initials) +'</div>'
-            + '<div class="comment-content">'
+            + '<div class="comment-content" style="flex:1;">'
+            + '<div style="display:flex; justify-content:space-between; align-items:center;">'
             + '<div class="comment-author">'+ escapeHtml(c.userName||"User") +'</div>'
+            + (canDelete ? `<button class="comment-menu-btn" onclick="toggleCommentMenu('${d.id}')" style="background:none; border:none; cursor:pointer; color:#888; padding:4px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>` : '')
+            + '</div>'
             + '<div class="comment-text">'+ escapeHtml(c.commentText||"") +'</div>'
             + '<div class="comment-time">'+ dateStr +'</div>'
+            + (canDelete ? `<div id="menu-${d.id}" class="comment-menu" style="display:none; margin-top:8px;">`
+            + `<button onclick="deleteComment('${d.id}', '${postId}')" style="background:none; border:none; color:#CE1126; cursor:pointer; padding:4px 0; font-size:12px; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-trash"></i> Delete</button>`
+            + '</div>' : '')
             + '</div>'
             + '</div>';
         }).join("");
+      }, function(error) {
+        console.error("Error loading comments:", error);
+        listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #CE1126;">Failed to load comments: ' + escapeHtml(error.message) + '</div>';
       });
   }
+  
+  window.toggleCommentMenu = function(commentId) {
+    const menu = document.getElementById('menu-' + commentId);
+    if (menu) {
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    }
+  };
+  
+  window.deleteComment = async function(commentId, postId) {
+    if (!confirm('Delete this comment?')) return;
+    if (!currentUser) return;
+
+    try {
+      const commentRef = db.collection('foundation_post_comments').doc(commentId);
+      const postRef = db.collection('foundation_campaign_posts').doc(postId);
+
+      await db.runTransaction(async function(tx) {
+        const commentSnap = await tx.get(commentRef);
+        if (!commentSnap.exists) return;
+
+        tx.delete(commentRef);
+        tx.update(postRef, { commentCount: firebase.firestore.FieldValue.increment(-1) });
+      });
+
+    } catch (e) {
+      console.error('Failed to delete comment:', e);
+      alert('Failed to delete comment.');
+    }
+  };
   
   window.submitComment = async function(){
     if(!currentUser || !currentPostId) return;

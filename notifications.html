@@ -41,6 +41,12 @@
       <div id="foundationCommentsList" style="display: grid; gap: 12px;"></div>
     </section>
     
+    <!-- New Member Notifications -->
+    <section class="card" id="foundationNewMembersSection" style="display:none; margin-bottom: 24px;">
+      <h3 style="margin-bottom: 16px;"><i class="fa-solid fa-user-plus"></i> New Foundation Members</h3>
+      <div id="foundationNewMembersList" style="display: grid; gap: 12px;"></div>
+    </section>
+    
     <!-- Responses Given (As Donor) -->
     <section class="card" id="myResponsesSection" style="display:none; margin-top:16px;">
       <h3 style="margin-bottom:12px;">Requests I Responded To</h3>
@@ -72,6 +78,7 @@
         loadMyResponses(user.uid);
         loadFoundationComments(user.uid);
         loadFoundationJoinRequests(user.uid);
+        loadFoundationNewMembers(user.uid);
         
         // Listen for profile changes to show access requests
         db.collection("users").doc(user.uid).onSnapshot(doc => {
@@ -168,7 +175,8 @@
           const accessVisible = document.getElementById("accessRequestsSection").style.display !== "none";
           const commentsVisible = document.getElementById("foundationCommentsSection").style.display !== "none";
           const joinRequestsVisible = document.getElementById("foundationJoinRequestsSection").style.display !== "none";
-          document.getElementById("noNotifications").style.display = (!respVisible && !accessVisible && !commentsVisible && !joinRequestsVisible) ? "block" : "none";
+          const newMembersVisible = document.getElementById("foundationNewMembersSection").style.display !== "none";
+          document.getElementById("noNotifications").style.display = (!respVisible && !accessVisible && !commentsVisible && !joinRequestsVisible && !newMembersVisible) ? "block" : "none";
         }, 500);
       }
 
@@ -195,6 +203,40 @@
                   <div>
                     <div style="font-weight:600; font-size:14px;">${escapeHtml(n.commenterName)} commented on a ${escapeHtml(n.foundationName)} campaign post</div>
                     <div style="font-size:12px; color:var(--muted); margin-top:4px;">${escapeHtml(n.commentText)}</div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    ${!n.isRead ? '<div style="width:8px; height:8px; background:#CE1126; border-radius:50%;"></div>' : ''}
+                    <i class="fa-solid fa-chevron-right" style="color:var(--muted);"></i>
+                  </div>
+                </div>
+              `;
+            }).join("");
+            checkEmptyState();
+          });
+      }
+      
+      function loadFoundationNewMembers(uid) {
+        db.collection("notifications")
+          .where("recipientId", "==", uid)
+          .where("notificationType", "==", "foundation_new_member")
+          .orderBy("createdAt", "desc")
+          .onSnapshot(snap => {
+            const section = document.getElementById("foundationNewMembersSection");
+            const list = document.getElementById("foundationNewMembersList");
+            
+            if(snap.empty) {
+              section.style.display = "none";
+              checkEmptyState();
+              return;
+            }
+            
+            section.style.display = "block";
+            list.innerHTML = snap.docs.map(doc => {
+              const n = doc.data();
+              return `
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:${n.isRead ? '#fff' : '#fff0f2'}; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor:pointer;" onclick="openNewMemberNotification('${doc.id}', '${n.foundationId}')">
+                  <div>
+                    <div style="font-weight:600; font-size:14px;">${escapeHtml(n.userName)} joined ${escapeHtml(n.foundationName)}</div>
                   </div>
                   <div style="display:flex; align-items:center; gap:8px;">
                     ${!n.isRead ? '<div style="width:8px; height:8px; background:#CE1126; border-radius:50%;"></div>' : ''}
@@ -252,6 +294,16 @@
       }
       
       window.openJoinRequestNotification = async function(notificationId, foundationId) {
+        try {
+          await db.collection("notifications").doc(notificationId).update({ isRead: true });
+          window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(foundationId);
+        } catch(e) {
+          console.error(e);
+          window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(foundationId);
+        }
+      };
+      
+      window.openNewMemberNotification = async function(notificationId, foundationId) {
         try {
           await db.collection("notifications").doc(notificationId).update({ isRead: true });
           window.location.href = "foundation-dashboard.html?foundationId=" + encodeURIComponent(foundationId);

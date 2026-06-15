@@ -158,6 +158,7 @@
       var foundationName = "Foundation";
       var canPost = false;
       var currentUser = null;
+      var foundationData = null;
       auth.onAuthStateChanged(async function(user){
         if(!user){ window.location.href = "index.html"; return; }
         currentUser = user;
@@ -166,6 +167,7 @@
           var fdDoc = await db.collection("foundation_requests").doc(fid).get();
           if(fdDoc.exists){
             var d = fdDoc.data();
+            foundationData = d;
             foundationName = d.name || "Foundation";
             document.getElementById("pageTitle").textContent = "Foundation Campaigns";
             var admins = Array.isArray(d.admins) ? d.admins : [];
@@ -240,11 +242,13 @@
               var p = doc.data();
               var dt = tsToDate(p.createdAt);
               var dateStr = dt ? dt.toLocaleString() : "Just now";
+              var canDelete = (currentUser && (foundationData && (foundationData.ownerId === currentUser.uid) || (foundationData && foundationData.admins && foundationData.admins.includes(currentUser.uid))));
               html.push(
                 '<div class="feed-card" id="post-'+ doc.id +'">'
                 + '<div class="feed-header">'
                 +   '<div><strong style="cursor:pointer;" onclick="window.location.href=\'foundation-public-profile.html?foundationId='+fid+'\'">'+ escapeHtml(p.foundationName||foundationName) +'</strong> <span class="type-badge">'+ escapeHtml(p.campaignType||"Campaign") +'</span></div>'
                 +   '<div class="muted-sm">'+ dateStr +'</div>'
+                +   (canDelete ? `<button class="campaign-delete-btn" onclick="deleteCampaign('${doc.id}')" style="background:none; border:none; cursor:pointer; color:#888;"><i class="fa-solid fa-trash"></i></button>` : '')
                 + '</div>'
                 + (p.imageURL ? '<img class="campaign-image" src="'+ escapeHtml(p.imageURL) +'" alt="campaign">' : '')
                 + '<div>'+ escapeHtml(p.caption||"") +'</div>'
@@ -263,6 +267,29 @@
             feed.innerHTML = '<div class="no-results">Failed to load campaigns.</div>';
           });
       }
+      
+      window.deleteCampaign = async function(campaignId) {
+        if(!confirm('Delete this campaign?')) return;
+        if(!currentUser) return;
+        // Check permission
+        const fdDoc = await db.collection("foundation_requests").doc(fid).get();
+        if(!fdDoc.exists) return;
+        const fdData = fdDoc.data();
+        const isOwner = fdData.ownerId === currentUser.uid;
+        const isAdmin = fdData.admins && fdData.admins.includes(currentUser.uid);
+        if(!isOwner && !isAdmin) {
+          alert('Only foundation owner and admins can delete campaigns.');
+          return;
+        }
+        
+        try {
+          await db.collection('foundation_campaign_posts').doc(campaignId).delete();
+          alert('Campaign deleted successfully!');
+        } catch(e) {
+          console.error('Failed to delete campaign:', e);
+          alert('Failed to delete campaign.');
+        }
+      };
       
       window.openCommentModal = async function(postId) {
         currentPostId = postId;
@@ -304,6 +331,8 @@
         if(commentsUnsubscribe) {
           commentsUnsubscribe();
         }
+        // Show loading state
+        listEl.innerHTML = '<div class="muted" style="text-align:center; padding: 20px;">Loading comments...</div>';
         commentsUnsubscribe = db.collection("foundation_post_comments")
           .where("postId","==",postId)
           .orderBy("createdAt","desc")
@@ -334,6 +363,9 @@
                 + '</div>'
                 + '</div>';
             }).join("");
+          }, function(error) {
+            console.error("Error loading comments:", error);
+            listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #CE1126;">Failed to load comments: ' + escapeHtml(error.message) + '</div>';
           });
       }
       

@@ -47,12 +47,13 @@
       loadStats();
 
       if(isAdmin) {
-        document.getElementById('editCoverBtn').style.display = 'flex';
-        document.getElementById('editProfileImgBtn').style.display = 'flex';
         document.getElementById('adminPostSection').style.display = 'flex';
         loadFoundationJoinRequests();
         loadMembers();
         loadAnalytics();
+      }
+      
+      if(isOwner) {
         populateSettings();
       }
       
@@ -85,6 +86,34 @@
     
     const initial = (data.name || "F").charAt(0).toUpperCase();
     document.getElementById('adminAvatar').textContent = initial;
+    
+    // Show Settings tab only if owner
+    const tabs = document.querySelectorAll('.management-tab');
+    tabs.forEach(tab => {
+      if(tab.textContent.trim() === 'Settings') {
+        if(isOwner) {
+          tab.style.display = 'block';
+        } else {
+          tab.style.display = 'none';
+          if(tab.classList.contains('active')) {
+            // Switch to Members tab if Settings was active
+            const membersTab = document.querySelector('.management-tab');
+            if(membersTab) {
+              membersTab.click();
+            }
+          }
+        }
+      }
+    });
+    
+    // Show edit cover/profile image only if owner or admin? Wait, requirements say owner can edit profile/cover image.
+    if(isOwner) {
+      document.getElementById('editCoverBtn').style.display = 'flex';
+      document.getElementById('editProfileImgBtn').style.display = 'flex';
+    } else {
+      document.getElementById('editCoverBtn').style.display = 'none';
+      document.getElementById('editProfileImgBtn').style.display = 'none';
+    }
   }
 
   function loadStats() {
@@ -147,6 +176,11 @@
     const file = e.target.files[0];
     if(!file) return;
     try {
+      // Permission check
+      if(!isOwner) {
+        alert("Only foundation owner can edit cover image!");
+        return;
+      }
       const url = await window.uploadImage(file);
       if(url) {
         await db.collection("foundation_requests").doc(fid).update({ coverImage: url });
@@ -159,6 +193,11 @@
     const file = e.target.files[0];
     if(!file) return;
     try {
+      // Permission check
+      if(!isOwner) {
+        alert("Only foundation owner can edit profile image!");
+        return;
+      }
       const url = await window.uploadImage(file);
       if(url) {
         await db.collection("foundation_requests").doc(fid).update({ profileImage: url });
@@ -187,6 +226,7 @@
     const likes = post.likes || [];
     const hasLiked = currentUser && likes.includes(currentUser.uid);
     const profileImg = document.getElementById('profileImg').src;
+    const canDelete = isOwner || isAdmin;
 
     return `
       <div class="campaign-card">
@@ -196,6 +236,7 @@
             <div class="campaign-author-name" style="cursor:pointer;" onclick="window.location.href='foundation-public-profile.html?foundationId=${fid}'">${post.foundationName || "Foundation"}</div>
             <div class="campaign-meta"><span>${date}</span></div>
           </div>
+          ${canDelete ? `<button class="campaign-delete-btn" onclick="deleteCampaign('${id}')" style="background:none; border:none; cursor:pointer; color:#888;"><i class="fa-solid fa-trash"></i></button>` : ''}
         </div>
         <div class="campaign-content">${escapeHtml(post.caption || "")}</div>
         ${post.imageURL ? `<img src="${post.imageURL}" class="campaign-image">` : ""}
@@ -208,6 +249,23 @@
       </div>
     `;
   }
+  
+  window.deleteCampaign = async function(campaignId) {
+    if(!confirm('Delete this campaign?')) return;
+    if(!currentUser) return;
+    if(!isOwner && !isAdmin) {
+      alert('Only foundation owner and admins can delete campaigns.');
+      return;
+    }
+    
+    try {
+      await db.collection('foundation_campaign_posts').doc(campaignId).delete();
+      alert('Campaign deleted successfully!');
+    } catch(e) {
+      console.error('Failed to delete campaign:', e);
+      alert('Failed to delete campaign.');
+    }
+  };
   
   window.openCommentModal = async function(postId) {
     currentPostId = postId;
@@ -249,6 +307,8 @@
     if(commentsUnsubscribe) {
       commentsUnsubscribe();
     }
+    // Show loading state
+    listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #888;">Loading comments...</div>';
     commentsUnsubscribe = db.collection("foundation_post_comments")
       .where("postId","==",postId)
       .orderBy("createdAt","desc")
@@ -262,7 +322,7 @@
           var dt = tsToDate(c.createdAt);
           var dateStr = dt ? dt.toLocaleString() : "Just now";
           var initials = (c.userName || "U").charAt(0).toUpperCase();
-          var canDelete = (currentUser && (c.userId === currentUser.uid || isAdmin));
+          var canDelete = (currentUser && (c.userId === currentUser.uid || isOwner || isAdmin));
           return `
             <div class="comment-item">
               <div class="comment-avatar">${escapeHtml(initials)}</div>
@@ -280,6 +340,9 @@
             </div>
           `;
         }).join("");
+      }, function(error) {
+        console.error("Error loading comments:", error);
+        listEl.innerHTML = '<div style="text-align:center; padding: 20px; color: #CE1126;">Failed to load comments: ' + escapeHtml(error.message) + '</div>';
       });
   }
   
@@ -488,11 +551,28 @@
   
   window.approveJoinRequest = async function(requestDocId, userId) {
     try {
+      // Permission check
+      if(!isOwner && !isAdmin) {
+        alert("Only foundation owner and admins can approve join requests!");
+        return;
+      }
+      
       // First, check if user is already a member (outside transaction)
       const existingMemberSnap = await db.collection("foundation_members")
         .where("foundationId", "==", fid)
         .where("memberId", "==", userId)
         .get();
+      
+      // Get user name for notification
+      let userName = "User";
+      try {
+        const userDoc = await db.collection("users").doc(userId).get();
+        if(userDoc.exists) {
+          userName = userDoc.data().name || "User";
+        }
+      } catch(e) {
+        console.error("Error getting user data:", e);
+      }
       
       if (!existingMemberSnap.empty) {
         // If already member, just delete the request
@@ -525,6 +605,32 @@
           isRead: false,
           recipientId: userId
         });
+        
+        // Notify all other foundation members (owner and admins)
+        const membersSnap = await db.collection("foundation_members")
+          .where("foundationId", "==", fid)
+          .get();
+        const recipientIds = new Set();
+        if(foundationData.ownerId) recipientIds.add(foundationData.ownerId);
+        if(foundationData.admins) {
+          foundationData.admins.forEach(adminId => recipientIds.add(adminId));
+        }
+        // Remove the new member and current user from recipients
+        recipientIds.delete(userId);
+        recipientIds.delete(currentUser.uid);
+        
+        recipientIds.forEach(recipientId => {
+          db.collection("notifications").add({
+            notificationType: "foundation_new_member",
+            foundationId: fid,
+            foundationName: foundationData.name,
+            userId: userId,
+            userName: userName,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            isRead: false,
+            recipientId: recipientId
+          });
+        });
       }
       
       alert("Join request approved!");
@@ -538,6 +644,12 @@
     if(!confirm("Reject this join request?")) return;
     
     try {
+      // Permission check
+      if(!isOwner && !isAdmin) {
+        alert("Only foundation owner and admins can reject join requests!");
+        return;
+      }
+      
       // Delete the request instead of just updating status
       await db.collection("foundation_join_requests").doc(requestDocId).delete();
       alert("Join request rejected!");
@@ -657,6 +769,12 @@
 
   window.promoteMember = async function(userId) {
     try {
+      // Permission check: only owner can promote
+      if(!isOwner) {
+        alert("Only foundation owner can promote members!");
+        return;
+      }
+      
       let newAdmins = foundationData.admins || [];
       if(!newAdmins.includes(userId)) newAdmins.push(userId);
       
@@ -672,6 +790,12 @@
 
   window.demoteMember = async function(userId) {
     try {
+      // Permission check: only owner can demote
+      if(!isOwner) {
+        alert("Only foundation owner can demote members!");
+        return;
+      }
+      
       let newAdmins = (foundationData.admins || []).filter(id => id !== userId);
       
       await db.collection("foundation_requests").doc(fid).update({ admins: newAdmins });
@@ -687,6 +811,18 @@
   window.removeMember = async function(userId, memberDocId) {
     if(!confirm("Remove this member from the foundation?")) return;
     try {
+      // Permission check
+      if(!isOwner && !isAdmin) {
+        alert("Only foundation owner and admins can remove members!");
+        return;
+      }
+      
+      // Don't let admins remove owner
+      if(userId === foundationData.ownerId) {
+        alert("Cannot remove foundation owner!");
+        return;
+      }
+      
       // Remove from foundation_members
       await db.collection("foundation_members").doc(memberDocId).delete();
       
